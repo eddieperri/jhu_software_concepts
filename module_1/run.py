@@ -6,7 +6,6 @@
 from flask import Flask, render_template
 
 # Initialize the Flask application
-# '__name__' is a special Python variable that tells Flask where to look for your templates and static files
 app = Flask(__name__)
 
 # The '@' symbol is a decorator. It tells Flask what URL should trigger the function below it.
@@ -24,5 +23,5 @@ if __name__ == '__main__':
     # Starts the Flask web server. 
     # host='0.0.0.0' tells the server to be accessible on all network interfaces.
     # port=8080 sets the specific port to listen on.
-    # debug=True is a helpful developer tool that automatically restarts your server every time you save a file change.
+    # debug=True is a helpful developer tool that automatically restarts your server every time you save a file change, according to AI.
     app.run(host='0.0.0.0', port=8080, debug=True)
