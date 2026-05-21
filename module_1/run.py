@@ -6,8 +6,8 @@
 from flask import Flask, render_template
 
 # Import the blueprint modules
-from contact import contact_bp
-from projects import projects_bp
+from routes.contact import contact_bp
+from routes.projects import projects_bp
 
 # Initialize the Flask application
 app = Flask(__name__)
