@@ -4,38 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eddie Perri | Developer Portfolio</title>
-    <style>
-        /* A basic style to highlight the navigation bar */
-        nav {
-            background-color: #2c3e50;
-            padding: 15px;
-        }
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin-right: 20px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        nav a:hover {
-            color: #1abc9c; /* Highlights green when you hover */
-        }
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        main {
-            padding: 30px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
     <nav>
-        <a href="{{ url_for('home') }}">Home</a>
-        <a href="{{ url_for('contact.contact_page') }}">Contact</a>
-        <a href="{{ url_for('projects.projects_page') }}">Projects</a>
+        <a href="{{ url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' else '' }}">Home</a>
+        <a href="{{ url_for('contact.contact_page') }}" class="{{ 'active' if request.endpoint == 'contact.contact_page' else '' }}">Contact</a>
+        <a href="{{ url_for('projects.projects_page') }}" class="{{ 'active' if request.endpoint == 'projects.projects_page' else '' }}">Projects</a>
     </nav>
 
     <main>
