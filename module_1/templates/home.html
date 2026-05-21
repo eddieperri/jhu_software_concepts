@@ -1,6 +1,24 @@
+
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Welcome to My Developer Portfolio</h1>
-    <p>If you are seeing this, the Flask server is successfully rendering HTML templates through the base layout!</p>
+    <div class="bio-container" style="display: flex; align-items: center; gap: 30px; margin-top: 20px;">
+        
+        <div class="bio-text">
+            <h1>Hello! I'm Eddie Perri.</h1>
+            <p>
+                I am currently pursuing a master's degree in AI here at Johns Hopkins. 
+                Professionally, I work as an energy auditor and estimator in the insulation industry, where I have been learning about building science and energy efficiency.
+            </p>
+            <p>
+                Recently, I have been working on Python scripts just to make my job more automated, and help make it easier to spend time on important things.
+            </p>
+           
+        </div>
+
+        <div class="profile-pic">
+            <img src="{{ url_for('static', filename='my_face.jpeg') }}" alt="Eddie Perri" width="250" style="border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+        </div>
+        
+    </div>
 {% endblock %}
