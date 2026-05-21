@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>My Projects</h1>
-    <p>This is where your portfolio items will be displayed.</p>
+    <div style="max-width: 900px; margin: 0 auto; padding-top: 40px;">
+        <h1 style="text-align: center; margin-bottom: 40px;">My Projects</h1>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+            
+            <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <h2 style="color: #2c3e50; margin-top: 0;">Website Initial Creation</h2>
+                <h4 style="color: #7f8c8d; margin-top: -10px; margin-bottom: 20px;">JHU Software Concepts: Module 1</h4>
+                <p style="color: #34495e; line-height: 1.6;">
+                    A responsive, scalable personal portfolio web application built from scratch. The backend routing is powered by Python and the Flask framework utilizing Blueprint architecture, while the frontend is dynamically rendered using Jinja2 templating, HTML5, and CSS.
+                </p>
+                <div style="margin-top: 25px;">
+                    <a href="https://github.com/eddieperri/jhu_software_concepts/tree/main/module_1" target="_blank"
+                       style="background-color: #2c3e50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        View on GitHub
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
 {% endblock %}

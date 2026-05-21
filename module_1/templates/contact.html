@@ -1,6 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Contact Me</h1>
-    <p>This is where the contact form or personal details will go.</p>
+    <div style="text-align: center; margin-top: 10vh;">
+        
+        <h1>Get In Touch</h1>
+        <p style="margin-bottom: 40px; color: #34495e;">
+            Feel free to reach out!
+        </p>
+        
+        <div style="display: flex; justify-content: center; gap: 30px; align-items: flex-start;">
+            
+            <a href="mailto:eddie.perri@gmail.com" 
+               style="background-color: #2c3e50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                Email Me
+            </a>
+            
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                
+                <a href="https://www.linkedin.com/in/eddie-perri-2a5160267" target="_blank"
+                   style="background-color: #0077b5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    LinkedIn
+                </a>
+                
+                <small style="margin-top: 8px; font-size: 11px; color: #7f8c8d; font-style: italic;">
+                    (I don't ever use my linkedin)
+                </small>
+            </div>
+
+        </div>
+    </div>
 {% endblock %}
