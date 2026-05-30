@@ -3,6 +3,7 @@ import time
 import random
 import os
 import json
+import sys  # <-- Added for the graceful exit
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -98,36 +99,77 @@ def scrape_data(total_pages=2500):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, "raw_data.json")
 
-    # Load existing data if it exists, or start fresh
-    all_raw_data = [] 
-    
-    # We will use a counter to know when to save
-    save_interval = 50 
+    # --- 1. RESUME LOGIC ---
+    # Check if we already have data saved so we don't overwrite it
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as file:
+            all_raw_data = json.load(file)
+        print(f"Found existing file. Resuming with {len(all_raw_data)} records...")
+    else:
+        all_raw_data = []
 
-    for page in range(1, total_pages + 1):
-        print(f"Scraping page {page} of {total_pages}...")
-        
-        # [Driver initialization logic here...]
-        
-        try:
-            # ... (Your current driver.get and parsing logic)
-            all_raw_data.extend(page_data)
+    # Calculate starting page based on existing data (Assuming ~20 records per page)
+    start_page = (len(all_raw_data) // 20) + 1 
+    # -----------------------
+
+    # Initialize driver ONCE
+    driver = initialize_driver()
+    save_interval = 50 
+    max_retries = 3 
+
+    # --- 2. GRACEFUL QUIT WRAPPER ---
+    try:
+        for page in range(start_page, total_pages + 1):
+            print(f"Scraping page {page} of {total_pages}...")
             
-            # Incremental save
-            if page % save_interval == 0:
-                with open(file_path, "w", encoding="utf-8") as file:
-                    json.dump(all_raw_data, file, indent=4)
-                print(f"--- Saved progress up to page {page} ---")
+            query_params = urllib.parse.urlencode({'page': page})
+            target_url = f"{base_url}?{query_params}"
             
-        except Exception as e:
-            print(f"Page {page} failed: {e}. Skipping to next...")
-            continue # Don't break, just move on
-            
-    # Final save
+            # --- 3. RETRY LOGIC ---
+            for attempt in range(max_retries):
+                try:
+                    driver.get(target_url)
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "tbody"))
+                    )
+                    time.sleep(random.uniform(4.0, 7.5)) 
+                    
+                    page_data = _parse_html_to_dicts(driver.page_source)
+                    all_raw_data.extend(page_data)
+                    
+                    if page % save_interval == 0:
+                        with open(file_path, "w", encoding="utf-8") as file:
+                            json.dump(all_raw_data, file, indent=4)
+                        print(f"--- Saved progress up to page {page} ---")
+                    
+                    # If successful, break out of the retry loop and move to the next page
+                    break 
+                    
+                except Exception as e:
+                    print(f"  Attempt {attempt + 1} failed for page {page}: {e}")
+                    if attempt < max_retries - 1:
+                        print(f"  Retrying in 5 seconds...")
+                        time.sleep(5)
+                    else:
+                        print(f"  Giving up on page {page} after {max_retries} attempts. Skipping...")
+            # ----------------------
+
+    # Triggered if you press Ctrl+C in the terminal
+    except KeyboardInterrupt:
+        print("\n\nPause signal received! Saving current progress before exiting...")
+        with open(file_path, "w", encoding="utf-8") as file:
+            json.dump(all_raw_data, file, indent=4)
+        print(f"Saved {len(all_raw_data)} records safely.")
+        driver.quit()
+        sys.exit(0)
+    # --------------------------------
+
+    # Final cleanup if the script runs all the way to 2,500
+    driver.quit()
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(all_raw_data, file, indent=4)
         
-    print(f"Successfully saved {len(all_raw_data)} raw records to raw_data.json!")
+    print(f"Successfully finished! Saved {len(all_raw_data)} raw records to raw_data.json.")
 
 if __name__ == "__main__":
     scrape_data(total_pages=2500)

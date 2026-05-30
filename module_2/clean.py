@@ -30,7 +30,20 @@ def clean_data():
     
     raw_data = load_data(raw_path)
     if not raw_data: return
-        
+    # --- DEDUPLICATION LOGIC ---
+    seen = set()
+    unique_raw_data = []
+    
+    for record in raw_data:
+        # Convert the dictionary to a sorted string so it can be tracked
+        record_string = json.dumps(record, sort_keys=True)
+        if record_string not in seen:
+            seen.add(record_string)
+            unique_raw_data.append(record)
+            
+    print(f"Loaded {len(raw_data)} records. Removed {len(raw_data) - len(unique_raw_data)} exact duplicates.")
+    raw_data = unique_raw_data
+    # ---------------------------    
     formatted_data = []
     
     # Map raw keys to the Rubric's required keys
@@ -63,7 +76,7 @@ def clean_data():
     try:
         # Run the professor's script using the EXACT same Python engine
         subprocess.run(
-            [sys.executable, app_script, "--file", temp_in], # <-- UPDATE THIS LINE
+            [sys.executable, app_script, "--file", temp_in],
             env=env,
             cwd=llm_dir, 
             check=True
