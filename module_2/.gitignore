@@ -1,0 +1,13 @@
+# Environments
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+
+# Some massive files that we don't want to track that I was working with
+ raw_data.html
