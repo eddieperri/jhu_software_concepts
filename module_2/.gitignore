@@ -1,10 +1,8 @@
-# Environments
 venv/
-env/
-
-# Python cache files
 __pycache__/
 *.pyc
-
-# IDE files
 .vscode/
+raw_data.html
+raw_data.json
+llm_hosting/temp_in.json
+llm_hosting/temp_in.jsonl
