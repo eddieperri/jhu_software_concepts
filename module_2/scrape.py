@@ -48,7 +48,7 @@ def _parse_html_to_dicts(raw_html):
                 url = "https://www.thegradcafe.com" + a_tag['href'] if a_tag else ""
                 
                 current_record = {
-                    "raw_program": f"{program}, {school}", # Preserved for traceability per rubric
+                    "raw_program": f"{program}, {school}", # Preserved for traceability
                     "school": school,
                     "program": program,
                     "degree": degree,
@@ -93,49 +93,41 @@ def _parse_html_to_dicts(raw_html):
             
     return parsed_records
 
-def scrape_data(total_pages=5):
-    """Pulls and parses data from The GradCafe using a hybrid workflow."""
-    driver = initialize_driver()
+def scrape_data(total_pages=2500):
     base_url = "https://www.thegradcafe.com/survey"
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, "raw_data.json")
+
+    # Load existing data if it exists, or start fresh
+    all_raw_data = [] 
     
-    all_raw_data = []
-    print("Starting the hybrid scrape (urllib + Selenium + BeautifulSoup)...")
-    
+    # We will use a counter to know when to save
+    save_interval = 50 
+
     for page in range(1, total_pages + 1):
-        # 1. Use urllib to construct the URL
-        query_params = urllib.parse.urlencode({'page': page})
-        target_url = f"{base_url}?{query_params}"
-        
         print(f"Scraping page {page} of {total_pages}...")
         
+        # [Driver initialization logic here...]
+        
         try:
-            # 2. Use Selenium to open the page
-            driver.get(target_url)
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "tbody.tw-bg-white"))
-            )
-            time.sleep(random.uniform(4.0, 7.5)) # Polite throttling
-            
-            # 3. Extract and parse HTML immediately
-            raw_html = driver.page_source
-            page_data = _parse_html_to_dicts(raw_html)
+            # ... (Your current driver.get and parsing logic)
             all_raw_data.extend(page_data)
             
+            # Incremental save
+            if page % save_interval == 0:
+                with open(file_path, "w", encoding="utf-8") as file:
+                    json.dump(all_raw_data, file, indent=4)
+                print(f"--- Saved progress up to page {page} ---")
+            
         except Exception as e:
-            print(f"Error on page {page}: {e}")
-            break
-
-    print("\nClosing the browser...")
-    driver.quit()
-    
-    # Save the lightweight JSON
+            print(f"Page {page} failed: {e}. Skipping to next...")
+            continue # Don't break, just move on
+            
+    # Final save
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(all_raw_data, file, indent=4)
         
     print(f"Successfully saved {len(all_raw_data)} raw records to raw_data.json!")
 
 if __name__ == "__main__":
-    scrape_data(total_pages=5)
+    scrape_data(total_pages=2500)
