@@ -297,7 +297,7 @@ def _cli_process_file(
     append: bool,
     to_stdout: bool,
 ) -> None:
-    """Process a JSON file and write JSONL in parallel."""
+    """Process a JSON file and write JSONL sequentially."""
     with open(in_path, "r", encoding="utf-8") as f:
         rows = _normalize_input(json.load(f))
 
@@ -310,20 +310,18 @@ def _cli_process_file(
     assert sink is not None 
 
     try:
-        # PARALLELIZATION UPGRADE: Calculate safe number of workers based on CPU
-        max_workers = max(1, os.cpu_count() // 2)
-        print(f"Parallelizing LLM standardization across {max_workers} CPU cores...")
+        print(f"Starting sequential LLM processing for {len(rows)} records...")
         
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all rows to the CPU pool
-            futures = [executor.submit(process_single_row, row) for row in rows]
+        for idx, row in enumerate(rows, 1):
+            completed_row = process_single_row(row)
+            json.dump(completed_row, sink, ensure_ascii=False)
+            sink.write("\n")
+            sink.flush() # Forces the hard drive to update immediately
             
-            # Write them to the file as they finish
-            for future in as_completed(futures):
-                completed_row = future.result()
-                json.dump(completed_row, sink, ensure_ascii=False)
-                sink.write("\n")
-                sink.flush()
+            # Print a progress update every 100 records so you KNOW it isn't frozen
+            if idx % 100 == 0:
+                print(f"  -> Processed {idx} / {len(rows)} records...")
+                
     finally:
         if sink is not sys.stdout:
             sink.close()
