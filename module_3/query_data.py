@@ -90,7 +90,7 @@ def get_metrics():
                 # Q8: Geo, MIT, Stanford, CMU, PhD in CS (Fall 2026)
                 cur.execute("""
                     SELECT COUNT(*) FROM applicants 
-                    WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%' AND degree = 'PhD'
+                    WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
                     AND llm_generated_university IN ('Georgetown University', 'Massachusetts Institute of Technology', 'Stanford University', 'Carnegie Mellon University')
                     AND llm_generated_program ILIKE '%Computer Science%';
                 """)
@@ -100,7 +100,7 @@ def get_metrics():
                 # Q9: Comparison using LLM vs Downloaded Raw Text
                 cur.execute("""
                     SELECT COUNT(*) FROM applicants 
-                    WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%' AND degree = 'PhD'
+                    WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
                     AND program ILIKE '%Computer Science%'
                     AND (program ILIKE '%Georgetown%' 
                          OR program ILIKE '%Massachusetts Institute of Technology%' 
