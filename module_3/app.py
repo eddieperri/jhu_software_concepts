@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, flash
 import sys
 import subprocess
 import threading
+import os
 from query_data import get_metrics  # Importing your DRY database logic
 
 app = Flask(__name__)
@@ -18,19 +19,28 @@ def status():
     return {'is_scraping': is_scraping}
 
 def run_data_pipeline():
-    """Runs the Scrape -> Clean -> Load pipeline in the background."""
+    """Runs the Scrape -> Clean -> Load pipeline with absolute paths."""
     global is_scraping
     is_scraping = True
+    
+    # Get the directory where app.py lives
+    base_dir = os.getcwd() 
+    
+    # Build absolute paths to your scripts
+    scrape_script = os.path.join(base_dir, "web_scraping", "scrape.py")
+    clean_script = os.path.join(base_dir, "web_scraping", "clean.py")
+    load_script = os.path.join(base_dir, "load_data.py")
+    
     try:
-        print("Starting background pipeline: Scraping...")
-        # Pointing directly to your scripts inside the web_scraping folder
-        subprocess.run([sys.executable, "web_scraping/scrape.py"], check=True)
+        print(f"Starting pipeline...")
+        # Now use the absolute path instead of the relative one
+        subprocess.run([sys.executable, scrape_script], check=True)
         
         print("Scraping complete. Cleaning data...")
-        subprocess.run([sys.executable, "web_scraping/clean.py"], check=True)
+        subprocess.run([sys.executable, clean_script], check=True)
         
         print("Cleaning complete. Loading to database...")
-        subprocess.run([sys.executable, "load_data.py"], check=True)
+        subprocess.run([sys.executable, load_script], check=True)
         
         print("Pipeline fully complete!")
     except subprocess.CalledProcessError as e:
@@ -38,7 +48,6 @@ def run_data_pipeline():
     except Exception as e:
         print(f"Pipeline failed: {e}")
     finally:
-        # Ensures the lock is lifted even if the script crashes
         is_scraping = False
 
 # --- FLASK ROUTES ---

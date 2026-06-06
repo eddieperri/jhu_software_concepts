@@ -171,7 +171,7 @@
     <div class="header">
         <div class="title-section">
             <h1>Analysis.</h1>
-            <h4>Grad School Cafe Data Dashboard</h4>
+            <h4>TheGradCafe Scraped Data Analysis Dashboard</h4>
         </div>
         
         <div class="actions">
@@ -179,7 +179,7 @@
                 <form action="/pull_data" method="POST" style="width: 100%;">
                     <button type="submit" class="btn btn-pull">Pull Data</button>
                 </form>
-                <p class="help-text">Runs the web scraper in the background to safely pull and load new data into the database.</p>
+                <p class="help-text">Runs the web scraper to safely pull and load new data into the database.</p>
             </div>
             
             <div class="action-group">
@@ -233,11 +233,11 @@
 
     <div class="qa-card">
         <p class="question">9. Do your numbers for question 8 change if you use LLM Generated Fields (rather than your downloaded fields)?</p>
-        <p class="answer"><span class="answer-label">Answer:</span> Yes. Using the raw user-input fields captured <strong>{{ metrics.q9_raw }}</strong> acceptances. The standardized LLM fields captured <strong>{{ metrics.q8 }}</strong> acceptances, proving the LLM caught irregular variations (like "MIT" vs "Massachusetts Inst. of Tech") that the raw text query missed.</p>
+        <p class="answer"><span class="answer-label">Answer:</span>  Using the raw user-input fields captured <strong>{{ metrics.q9_raw }}</strong> acceptances. The standardized LLM fields captured <strong>{{ metrics.q8 }}</strong> acceptances.</p>
     </div>
 
     <div class="qa-card">
-        <p class="question">10. Additional Query 1: What are the top 5 most competitive programs by total application volume?</p>
+        <p class="question">10. What are the top 5 most competitive programs by total application volume?</p>
         <div class="answer"><span class="answer-label">Answer:</span> 
             <ul class="clean-list">
             {% for row in metrics.q10 %}
@@ -248,7 +248,7 @@
     </div>
 
     <div class="qa-card">
-        <p class="question">11. Additional Query 2: Which month sees the highest volume of admissions results posted?</p>
+        <p class="question">11. Which months see the highest volume of admissions results posted?</p>
         <div class="answer"><span class="answer-label">Answer:</span> 
             <ul class="clean-list">
             {% for row in metrics.q11 %}
