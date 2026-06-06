@@ -12,8 +12,12 @@ DB_PARAMS = {
     "port": 5432
 }
 
-def run_assignment_report():
+def get_metrics():
+    """Runs analysis, prints the report to the terminal, and returns a dict for Flask."""
     print("Running Assignment Analysis Report...\n")
+    print("-" * 50)
+    
+    metrics = {}
     
     try:
         with psycopg.connect(**DB_PARAMS) as conn:
@@ -21,15 +25,16 @@ def run_assignment_report():
                 
                 # Q1: Applied for Fall 2026
                 cur.execute("SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';")
-                print(f"1. Total entries for Fall 2026: {cur.fetchone()[0]}")
+                metrics['q1'] = cur.fetchone()[0]
+                print(f"1. Total entries for Fall 2026: {metrics['q1']}")
 
                 # Q2: Percentage of International Students
                 cur.execute("""
                     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE us_or_international = 'International') / NULLIF(COUNT(*), 0), 2) 
                     FROM applicants;
                 """)
-                intl_pct = cur.fetchone()[0]
-                print(f"2. Percentage of International Students: {intl_pct}%")
+                metrics['q2'] = cur.fetchone()[0]
+                print(f"2. Percentage of International Students: {metrics['q2']}%")
 
                 # Q3: Average GPA, GRE (Sanitized)
                 cur.execute("""
@@ -42,29 +47,35 @@ def run_assignment_report():
                     AND (gre_aw BETWEEN 0 AND 6.0);
                 """)
                 res = cur.fetchone()
+                metrics['q3_gpa'] = res[0]
+                metrics['q3_gre'] = res[1]
+                metrics['q3_grev'] = res[2]
+                metrics['q3_greaw'] = res[3]
                 print(f"3. Averages: GPA: {res[0]}, GRE-Q: {res[1]}, GRE-V: {res[2]}, GRE-AW: {res[3]}")
 
                 # Q4: Avg GPA of American Students in Fall 2026
-                # (Assuming 'American' maps to is_international = false)
                 cur.execute("""
                     SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
                     WHERE term = 'Fall 2026' AND us_or_international = 'American';
                 """)
-                print(f"4. Avg GPA of American Students (Fall 2026): {cur.fetchone()[0]}")
+                metrics['q4'] = cur.fetchone()[0]
+                print(f"4. Avg GPA of American Students (Fall 2026): {metrics['q4']}")
 
                 # Q5: Percent Acceptance Fall 2026
                 cur.execute("""
                     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status ILIKE 'Accepted%') / NULLIF(COUNT(*), 0), 2)
                     FROM applicants WHERE term = 'Fall 2026';
                 """)
-                print(f"5. Acceptance Rate (Fall 2026): {cur.fetchone()[0]}%")
+                metrics['q5'] = cur.fetchone()[0]
+                print(f"5. Acceptance Rate (Fall 2026): {metrics['q5']}%")
 
                 # Q6: Avg GPA of Acceptances Fall 2026
                 cur.execute("""
                     SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
                     WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%';
                 """)
-                print(f"6. Avg GPA of Acceptances (Fall 2026): {cur.fetchone()[0]}")
+                metrics['q6'] = cur.fetchone()[0]
+                print(f"6. Avg GPA of Acceptances (Fall 2026): {metrics['q6']}")
 
                 # Q7: JHU, Masters, CS
                 cur.execute("""
@@ -73,7 +84,8 @@ def run_assignment_report():
                     AND degree = 'Masters' 
                     AND llm_generated_program ILIKE '%Computer Science%';
                 """)
-                print(f"7. JHU Masters in CS applicants: {cur.fetchone()[0]}")
+                metrics['q7'] = cur.fetchone()[0]
+                print(f"7. JHU Masters in CS applicants: {metrics['q7']}")
 
                 # Q8: Geo, MIT, Stanford, CMU, PhD in CS (Fall 2026)
                 cur.execute("""
@@ -82,13 +94,24 @@ def run_assignment_report():
                     AND llm_generated_university IN ('Georgetown University', 'Massachusetts Institute of Technology', 'Stanford University', 'Carnegie Mellon University')
                     AND llm_generated_program ILIKE '%Computer Science%';
                 """)
-                print(f"8. Accepted PhD CS at Top Schools: {cur.fetchone()[0]}")
+                metrics['q8'] = cur.fetchone()[0]
+                print(f"8. Accepted PhD CS at Top Schools (Using LLM Fields): {metrics['q8']}")
 
-                # Q9: Comparison using LLM vs Downloaded
-                # (You can just explain this in your PDF using the results from Q8)
-                print("9. See PDF for LLM vs Downloaded field comparison logic.")
-
-
+                # Q9: Comparison using LLM vs Downloaded Raw Text
+                cur.execute("""
+                    SELECT COUNT(*) FROM applicants 
+                    WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%' AND degree = 'PhD'
+                    AND program ILIKE '%Computer Science%'
+                    AND (program ILIKE '%Georgetown%' 
+                         OR program ILIKE '%Massachusetts Institute of Technology%' 
+                         OR program ILIKE '%MIT%' 
+                         OR program ILIKE '%Stanford%' 
+                         OR program ILIKE '%Carnegie Mellon%');
+                """)
+                metrics['q9_raw'] = cur.fetchone()[0]
+                print("9. Comparison (LLM vs Raw Text):")
+                print(f"   - Acceptances captured using Standardized LLM Fields: {metrics['q8']}")
+                print(f"   - Acceptances captured using Raw User-Input Fields: {metrics['q9_raw']}")
 
                 # --- Additional Question 1: Top 5 Programs by Volume ---
                 cur.execute("""
@@ -98,12 +121,12 @@ def run_assignment_report():
                     ORDER BY volume DESC
                     LIMIT 5;
                 """)
+                metrics['q10'] = cur.fetchall()
                 print("\n10. Top 5 Programs by Applicant Volume:")
-                for row in cur.fetchall():
+                for row in metrics['q10']:
                     print(f"    - {row[0]}: {row[1]} applications")
 
                 # --- Additional Question 2: Monthly Trends ---
-                # This uses Postgres date parsing to group by month name
                 cur.execute("""
                     SELECT 
                         TO_CHAR(date_added, 'Month') as month_name, 
@@ -112,15 +135,19 @@ def run_assignment_report():
                     GROUP BY month_name 
                     ORDER BY count DESC;
                 """)
+                metrics['q11'] = cur.fetchall()
                 print("\n11. Application Volume by Month:")
-                for row in cur.fetchall():
+                for row in metrics['q11']:
                     print(f"    - {row[0].strip()}: {row[1]} entries")
                 
                 print("-" * 50)
-                print("\nReport complete.")
+                print("Report complete.\n")
 
     except Exception as e:
         print(f"An error occurred: {e}")
+        
+    return metrics
 
 if __name__ == "__main__":
-    run_assignment_report()
+    # If run directly from the terminal, it will execute and print.
+    get_metrics()

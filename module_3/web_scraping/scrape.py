@@ -110,88 +110,89 @@ def _parse_html_to_dicts(raw_html):
 
 
 
-def scrape_data(total_pages=2500): # default target is 2500 pages which is ~50000 sets of student data
-    """Opens browser, types URLs, manages files"""
+def scrape_data(total_pages=2500):
+    """Opens browser, types URLs, manages files, and stops when reaching known data."""
 
-    base_url = "https://www.thegradcafe.com/survey" # sets up the page we want to see from thegradcafe
-    script_dir = os.path.dirname(os.path.abspath(__file__)) # asks computer where the script is
-    file_path = os.path.join(script_dir, "raw_data.json")   # creates the appropriate filepath for the raw_data file
+    base_url = "https://www.thegradcafe.com/survey"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, "raw_data.json")
 
-    # Resume Logic
-    # Checks if we already have data saved in the filepath so we don't overwrite it
+    # Resume Logic: Load existing data to check against
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as file:
             all_raw_data = json.load(file)
-        print(f"Found existing file. Resuming with {len(all_raw_data)} records...")
+        print(f"Found existing file with {len(all_raw_data)} records.")
     else:
         all_raw_data = []
 
-    # Calculate starting page based on existing data (Assuming ~20 records per page)
-    start_page = (len(all_raw_data) // 20) + 1  # Need to add 1 since python starts counting at 0. FLoor division.
+    # Create a set of URLs we already have. Sets are incredibly fast for "if x in set" lookups.
+    existing_urls = {record["url"] for record in all_raw_data if record.get("url")}
+    
+    new_records_found = []
+    overlap_found = False
 
-    # Open browser, some set-up options
-    driver = initialize_driver() # opens chrome with the settings specified earlier on
-    save_interval = 50 
+    driver = initialize_driver()
     max_retries = 3 
 
-    # Save and Quit
     try:
-        # Starts loop counting from where we left off (start_page) all the way to our goal (total_pages)
-        for page in range(start_page, total_pages + 1):
-            print(f"Scraping page {page} of {total_pages}...")
+        # ALWAYS start at page 1 to catch the newest submissions
+        for page in range(1, total_pages + 1):
+            print(f"Scraping page {page} for new data...")
             
-            # turns a tiny dictionary into the web format so the URL works
-            query_params = urllib.parse.urlencode({'page': page}) # urllib making sure the page number is correctly encoded
+            query_params = urllib.parse.urlencode({'page': page})
             target_url = f"{base_url}?{query_params}"
             
             # Retry Logic
             for attempt in range(max_retries):
                 try:
-                    driver.get(target_url) # opens the desired url with Selenium
+                    driver.get(target_url)
 
-                    # waiting for page to load for UP TO 15 seconds
                     WebDriverWait(driver, 15).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "tbody"))
                     )
                     time.sleep(random.uniform(4.0, 7.5)) 
                     
-                    page_data = _parse_html_to_dicts(driver.page_source)  # Copies the whole page and sends it to be broken up and made into dictionaries
-                    all_raw_data.extend(page_data) # takes the new dictionary and dumps it into our master list
+                    page_data = _parse_html_to_dicts(driver.page_source)
                     
-                    if page % save_interval == 0: # if the page number is cleanly divisible by 50, save
-                        with open(file_path, "w", encoding="utf-8") as file:
-                            json.dump(all_raw_data, file, indent=4)
-                        print(f"--- Saved progress up to page {page} ---")
+                    # --- NEW LOGIC: Check for Overlap ---
+                    for record in page_data:
+                        # If we hit a record we already have, we've reached the old data
+                        if record["url"] and record["url"] in existing_urls:
+                            overlap_found = True
+                            break # Break out of the record loop
+                        
+                        # Otherwise, it's a brand new submission
+                        new_records_found.append(record)
                     
-                    # If successful, break out of the retry loop and move to the next page
+                    # If successful, break out of the retry loop
                     break 
 
-                # if the page won't load
                 except Exception as e:
                     print(f"  Attempt {attempt + 1} failed for page {page}: {e}")
                     if attempt < max_retries - 1:
                         print(f"  Retrying in 5 seconds...")
                         time.sleep(5)
                     else:
-                        print(f"  Giving up on page {page} after {max_retries} attempts. Skipping...")
+                        print(f"  Giving up on page {page} after {max_retries} attempts.")
             
+            # If we found overlap on this page, stop scraping entirely
+            if overlap_found:
+                print(f"Reached existing data on page {page}. Stopping scrape.")
+                break
 
-    # Triggered if you press Ctrl+C in the terminal
     except KeyboardInterrupt:
         print("\n\nPause signal received! Saving current progress before exiting...")
-        with open(file_path, "w", encoding="utf-8") as file:
-            json.dump(all_raw_data, file, indent=4)
-        print(f"Saved {len(all_raw_data)} records safely.")
+    finally:
         driver.quit()
-        sys.exit(0)
-    
-
-    # Final cleanup if the script runs all the way to the end
-    driver.quit()
-    with open(file_path, "w", encoding="utf-8") as file:
-        json.dump(all_raw_data, file, indent=4)
         
-    print(f"Successfully finished! Saved {len(all_raw_data)} raw records to raw_data.json.")
+        # Add the new records to the TOP of the master list (so newest stays first)
+        if new_records_found:
+            all_raw_data = new_records_found + all_raw_data
+            with open(file_path, "w", encoding="utf-8") as file:
+                json.dump(all_raw_data, file, indent=4)
+            print(f"Successfully pulled {len(new_records_found)} new records! Total is now {len(all_raw_data)}.")
+        else:
+            print("No new records found. Database is already up to date.")
 
 if __name__ == "__main__":
     scrape_data(total_pages=2500)
