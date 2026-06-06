@@ -1,0 +1,1 @@
+You must have PostgreSQL downloaded in order to run this software. I downloaded it from here: https://www.postgresql.org/download/
