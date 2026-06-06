@@ -25,18 +25,19 @@ def run_assignment_report():
 
                 # Q2: Percentage of International Students
                 cur.execute("""
-                    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE is_international = true) / NULLIF(COUNT(*), 0), 2) 
+                    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE us_or_international = 'International') / NULLIF(COUNT(*), 0), 2) 
                     FROM applicants;
                 """)
-                print(f"2. Percentage of International Students: {cur.fetchone()[0]}%")
+                intl_pct = cur.fetchone()[0]
+                print(f"2. Percentage of International Students: {intl_pct}%")
 
                 # Q3: Average GPA, GRE (Sanitized)
                 cur.execute("""
-                    SELECT ROUND(AVG(gpa)::numeric, 2), ROUND(AVG(gre_q)::numeric, 1), 
+                    SELECT ROUND(AVG(gpa)::numeric, 2), ROUND(AVG(gre)::numeric, 1), 
                            ROUND(AVG(gre_v)::numeric, 1), ROUND(AVG(gre_aw)::numeric, 1)
                     FROM applicants 
                     WHERE (gpa IS NOT NULL AND gpa <= 4.0)
-                    AND (gre_q BETWEEN 130 AND 170)
+                    AND (gre BETWEEN 130 AND 170)
                     AND (gre_v BETWEEN 130 AND 170)
                     AND (gre_aw BETWEEN 0 AND 6.0);
                 """)
@@ -47,7 +48,7 @@ def run_assignment_report():
                 # (Assuming 'American' maps to is_international = false)
                 cur.execute("""
                     SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
-                    WHERE term = 'Fall 2026' AND is_international = false;
+                    WHERE term = 'Fall 2026' AND us_or_international = 'American';
                 """)
                 print(f"4. Avg GPA of American Students (Fall 2026): {cur.fetchone()[0]}")
 
@@ -105,7 +106,7 @@ def run_assignment_report():
                 # This uses Postgres date parsing to group by month name
                 cur.execute("""
                     SELECT 
-                        TO_CHAR(TO_DATE(date_added, '"Added on" Mon DD, YYYY'), 'Month') as month_name, 
+                        TO_CHAR(date_added, 'Month') as month_name, 
                         COUNT(*) as count 
                     FROM applicants 
                     GROUP BY month_name 

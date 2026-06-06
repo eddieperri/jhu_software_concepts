@@ -2,6 +2,7 @@ import json
 import psycopg
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -47,27 +48,37 @@ def load_data():
                     gre_q = clean_numeric(row.get("GRE Quant"), 130, 170)
                     gre_v = clean_numeric(row.get("GRE Verbal"), 130, 170)
                     gre_aw = clean_numeric(row.get("GRE AW"), 0.0, 6.0)
+
+                    raw_date = row.get("date added") # e.g., "Added on May 29, 2026"
+                    clean_date = None
+                    if raw_date:
+                        try:
+                            # Remove "Added on " to leave "May 29, 2026"
+                            date_str = raw_date.replace("Added on ", "")
+                            clean_date = datetime.strptime(date_str, "%b %d, %Y").date()
+                        except ValueError:
+                            clean_date = None # If parsing fails, store NULL
                     
                     is_intl = row.get("I/International") == "International"
 
                     # Execute Insert
                     cur.execute("""
                         INSERT INTO applicants (
-                            id, program, comments, date_added, url, status, term,
-                            is_international, gpa, gre_q, gre_v, gre_aw, degree,
+                            p_id, program, comments, date_added, url, status, term,
+                            us_or_international, gpa, gre, gre_v, gre_aw, degree,
                             llm_generated_program, llm_generated_university
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         index, 
                         row.get("program"), 
                         row.get("comments"), 
-                        row.get("date added"),
+                        clean_date,
                         row.get("result url"), 
                         row.get("status"), 
                         row.get("term"),
-                        is_intl, 
+                        row.get("I/International"), # Keeping as text to match rubric
                         gpa, 
-                        gre_q, 
+                        gre_q, # This maps to the SQL 'gre' column
                         gre_v, 
                         gre_aw, 
                         row.get("Degree"),
