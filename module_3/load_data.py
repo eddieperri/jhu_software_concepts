@@ -1,60 +1,64 @@
 import json
 import psycopg
 import os
+from dotenv import load_dotenv
 
-# Grab the password from the environment (or default to a placeholder)
-db_password = os.environ.get('DB_PASSWORD', 'default_password_if_missing')
+# Load environment variables
+load_dotenv()
 
 DB_PARAMS = {
     "dbname": "thegradcafe",
     "user": "postgres",
-    "password": db_password, 
+    "password": os.environ.get("DB_PASSWORD"), 
     "host": "localhost",
     "port": 5432
 }
 
-def migrate_data():
+def clean_numeric(val, min_val, max_val):
+    """Helper to safely convert strings to floats and enforce logical bounds."""
+    try:
+        if val is None or val == "":
+            return None
+        # Clean up any potential extra spaces
+        f_val = float(str(val).strip())
+        if min_val <= f_val <= max_val:
+            return f_val
+        return None # Out of bounds (e.g., GPA > 4.0)
+    except (ValueError, TypeError):
+        return None # Not a number
+
+def load_data():
     print("Loading JSON data...")
-    # 2. Load the JSON data
+    # Make sure this path matches your folder structure
     with open('web_scraping/applicant_data.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
 
     print(f"Found {len(data)} records. Connecting to database...")
     
-    # 3. Connect to PostgreSQL using psycopg (v3)
     try:
         with psycopg.connect(**DB_PARAMS) as conn:
             with conn.cursor() as cur:
+                # Wipe the table to ensure clean state
+                cur.execute("TRUNCATE TABLE applicants;")
                 
-                # 4. Iterate through JSON and insert into DB
                 for index, row in enumerate(data, start=1):
+                    # Clean data using our helper
+                    gpa = clean_numeric(row.get("uGPA"), 0.0, 4.0)
+                    gre_q = clean_numeric(row.get("GRE Quant"), 130, 170)
+                    gre_v = clean_numeric(row.get("GRE Verbal"), 130, 170)
+                    gre_aw = clean_numeric(row.get("GRE AW"), 0.0, 6.0)
                     
-                    # --- DATA TRANSLATION & CLEANING ---
-                    
-                    # Convert "I/International" to a boolean
                     is_intl = row.get("I/International") == "International"
-                    
-                    # Safely convert GPA to float (handles missing or empty strings)
-                    raw_gpa = row.get("uGPA")
-                    gpa = float(raw_gpa) if raw_gpa else None
-                    
-                    # Safely convert GRE scores (assuming your full data might have these)
-                    # If the keys don't exist in a record, they default to None (SQL NULL)
-                    gre_q = float(row.get("GRE Q")) if row.get("GRE Q") else None
-                    gre_v = float(row.get("GRE V")) if row.get("GRE V") else None
-                    gre_aw = float(row.get("GRE AW")) if row.get("GRE AW") else None
 
-                    # --- EXECUTE SQL INSERT ---
+                    # Execute Insert
                     cur.execute("""
                         INSERT INTO applicants (
                             id, program, comments, date_added, url, status, term,
                             is_international, gpa, gre_q, gre_v, gre_aw, degree,
                             llm_generated_program, llm_generated_university
-                        ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                        )
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
-                        index, # Generates a unique ID starting at 1
+                        index, 
                         row.get("program"), 
                         row.get("comments"), 
                         row.get("date added"),
@@ -71,12 +75,11 @@ def migrate_data():
                         row.get("llm-generated-university")
                     ))
                 
-                # 5. Commit the transaction to save the data
                 conn.commit()
-                print("Migration complete! All records successfully inserted.")
+                print("Migration complete! Data sanitized and loaded.")
 
     except Exception as e:
-        print(f"An error occurred during migration: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    migrate_data()
+    load_data()
