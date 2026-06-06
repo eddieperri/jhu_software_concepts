@@ -10,11 +10,13 @@ app = Flask(__name__)
 app.secret_key = "jhu_super_secret_key" 
 
 # --- STATE MANAGEMENT ---
-# This global variable tracks if the background scraper is currently running
+# Global flag used to prevent the user from triggering multiple concurrent 
+# scraping requests, which could break the code or just waste resources
 is_scraping = False 
 
 @app.route('/status')
 def status():
+    """API endpoint for frontend polling to monitor pipeline status."""
     global is_scraping
     return {'is_scraping': is_scraping}
 
@@ -26,14 +28,16 @@ def run_data_pipeline():
     # Get the directory where app.py lives
     base_dir = os.getcwd() 
     
-    # Build absolute paths to your scripts
+    # Build absolute paths to the scripts
     scrape_script = os.path.join(base_dir, "web_scraping", "scrape.py")
     clean_script = os.path.join(base_dir, "web_scraping", "clean.py")
     load_script = os.path.join(base_dir, "load_data.py")
     
     try:
         print(f"Starting pipeline...")
-        # Now use the absolute path instead of the relative one
+
+        # Execute pipeline stages sequentially.
+        # check=True forces the process to raise an exception if a script fails.
         subprocess.run([sys.executable, scrape_script], check=True)
         
         print("Scraping complete. Cleaning data...")
@@ -47,6 +51,7 @@ def run_data_pipeline():
         print(f"Pipeline failed at a script execution step: {e}")
     except Exception as e:
         print(f"Pipeline failed: {e}")
+    # Always release the button locks so the UI buttons become available again 
     finally:
         is_scraping = False
 
@@ -54,19 +59,18 @@ def run_data_pipeline():
 
 @app.route('/')
 def index():
-    """Fetches the latest metrics and renders the dashboard."""
-    # Call your imported function to grab the live SQL data dictionary
+    """Renders the dashboard with the latest analysis metrics."""
     metrics = get_metrics()
     return render_template('index.html', metrics=metrics, is_scraping=is_scraping)
 
 @app.route('/pull_data', methods=['POST'])
 def pull_data():
-    """Triggered by the 'Pull Data' button."""
+    """Triggered by the 'Pull Data' button, starting the scraper."""
     global is_scraping
     if is_scraping:
         flash("A data pull is already running in the background! Please wait for it to finish.", "warning")
     else:
-        # Start the pipeline in a background thread so the webpage doesn't freeze
+        # Offload pipeline to a separate thread so the server remains responsive and the page doesn't freeze
         thread = threading.Thread(target=run_data_pipeline)
         thread.start()
         flash("Data pull initiated! The scraper is now running in the background. Check your VS Code terminal for live progress.", "success")
@@ -75,7 +79,7 @@ def pull_data():
 
 @app.route('/update_analysis', methods=['POST'])
 def update_analysis():
-    """Triggered by the 'Update Analysis' button."""
+    """Triggered by the 'Update Analysis' button, refreshes the dashboard metrics"""
     global is_scraping
     if is_scraping:
         flash("Cannot update analysis. The scraper is currently writing to the database. Please wait until it finishes.", "error")
