@@ -120,16 +120,18 @@ def test_db():
     Sets up a clean test database schema and yields the URL.
     Tears down the table after the test is complete.
     """
-    # 1. Load the local .env file to get your real password
     load_dotenv()
-    db_password = os.environ.get("DB_PASSWORD", "")
     
-    # 2. Construct the URL using your secure password. 
-    # Notice we connect to the default 'postgres' database, not 'thegradcafe' 
-    # to avoid accidentally wiping your live data if the test fails to isolate.
-    db_url = f"postgresql://postgres:{db_password}@localhost:5432/postgres"
+    # 1. Detect if we are running in GitHub Actions
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # CI Environment: Use the default password defined in our tests.yml
+        db_url = "postgresql://postgres:password@localhost:5432/postgres"
+    else:
+        # Local Environment: Use your secure .env password
+        db_password = os.environ.get("DB_PASSWORD", "")
+        db_url = f"postgresql://postgres:{db_password}@localhost:5432/postgres"
     
-    # 3. Set the environment variable so all source code uses it
+    # 2. Set the environment variable so all source code uses it
     os.environ['DATABASE_URL'] = db_url
     
     # Setup schema
@@ -159,7 +161,7 @@ def test_db():
     
     yield db_url
     
-    # Teardown (Clean up after test is done)
+    # Teardown
     with psycopg.connect(conninfo=db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("DROP TABLE IF EXISTS applicants;")
