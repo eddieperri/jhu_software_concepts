@@ -52,3 +52,17 @@ def test_analysis_page_rendering(client, monkeypatch, fake_metrics):
     
     assert update_btn is not None
     assert "Update Analysis" in update_btn.text
+
+@pytest.mark.web
+def test_home_redirect(client):
+    """
+    Test that navigating to the root URL (/) correctly redirects
+    the user to the /analysis dashboard.
+    """
+    response = client.get('/')
+    
+    # 302 is the standard HTTP status code for a redirect
+    assert response.status_code == 302
+    
+    # Verify that the location it redirects to is the analysis page
+    assert '/analysis' in response.location

@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 import threading
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 from query_data import get_metrics  
 
 def default_pipeline_runner(app_instance):
@@ -73,6 +73,11 @@ def create_app(test_config=None, pipeline_runner=None):
 
     # Dependency Injection: Use the provided fake runner for tests, or default to the real one
     runner = pipeline_runner or default_pipeline_runner
+
+    @app.route('/')
+    def home():
+        """Redirects the root URL to the analysis dashboard."""
+        return redirect(url_for('analysis'))
 
     @app.route('/analysis', methods=['GET'])
     def analysis():
