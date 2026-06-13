@@ -4,13 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PARAMS = {
-    "dbname": "thegradcafe",
-    "user": "postgres",
-    "password": os.environ.get("DB_PASSWORD"), 
-    "host": "localhost",
-    "port": 5432
-}
+def get_db_connection():
+    """Helper to establish a connection using the environment variable."""
+    db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/thegradcafe')
+    return psycopg.connect(conninfo=db_url)
 
 def get_metrics():
     """Runs analysis, prints the report to the terminal, and returns a dict for Flask."""
@@ -20,7 +17,7 @@ def get_metrics():
     metrics = {}
     
     try:
-        with psycopg.connect(**DB_PARAMS) as conn:
+        with get_db_connection() as conn:
             with conn.cursor() as cur:
                 
                 # Q1: Applied for Fall 2026
@@ -33,7 +30,8 @@ def get_metrics():
                     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE us_or_international = 'International') / NULLIF(COUNT(*), 0), 2) 
                     FROM applicants;
                 """)
-                metrics['q2'] = cur.fetchone()[0]
+                # Handle case where table is empty (NULLIF prevents div by zero, but returns None)
+                metrics['q2'] = cur.fetchone()[0] or 0.00
                 print(f"2. Percentage of International Students: {metrics['q2']}%")
 
                 # Q3: Average GPA, GRE (Sanitized)
@@ -47,18 +45,19 @@ def get_metrics():
                     AND (gre_aw BETWEEN 0 AND 6.0);
                 """)
                 res = cur.fetchone()
-                metrics['q3_gpa'] = res[0]
-                metrics['q3_gre'] = res[1]
-                metrics['q3_grev'] = res[2]
-                metrics['q3_greaw'] = res[3]
-                print(f"3. Averages: GPA: {res[0]}, GRE-Q: {res[1]}, GRE-V: {res[2]}, GRE-AW: {res[3]}")
+                # Use fallback 0s if averages are None (e.g. empty table during tests)
+                metrics['q3_gpa'] = res[0] if res[0] is not None else 0
+                metrics['q3_gre'] = res[1] if res[1] is not None else 0
+                metrics['q3_grev'] = res[2] if res[2] is not None else 0
+                metrics['q3_greaw'] = res[3] if res[3] is not None else 0
+                print(f"3. Averages: GPA: {metrics['q3_gpa']}, GRE-Q: {metrics['q3_gre']}, GRE-V: {metrics['q3_grev']}, GRE-AW: {metrics['q3_greaw']}")
 
                 # Q4: Avg GPA of American Students in Fall 2026
                 cur.execute("""
                     SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
                     WHERE term = 'Fall 2026' AND us_or_international = 'American';
                 """)
-                metrics['q4'] = cur.fetchone()[0]
+                metrics['q4'] = cur.fetchone()[0] or 0
                 print(f"4. Avg GPA of American Students (Fall 2026): {metrics['q4']}")
 
                 # Q5: Percent Acceptance Fall 2026
@@ -66,7 +65,7 @@ def get_metrics():
                     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status ILIKE 'Accepted%') / NULLIF(COUNT(*), 0), 2)
                     FROM applicants WHERE term = 'Fall 2026';
                 """)
-                metrics['q5'] = cur.fetchone()[0]
+                metrics['q5'] = cur.fetchone()[0] or 0.00
                 print(f"5. Acceptance Rate (Fall 2026): {metrics['q5']}%")
 
                 # Q6: Avg GPA of Acceptances Fall 2026
@@ -74,7 +73,7 @@ def get_metrics():
                     SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
                     WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%';
                 """)
-                metrics['q6'] = cur.fetchone()[0]
+                metrics['q6'] = cur.fetchone()[0] or 0
                 print(f"6. Avg GPA of Acceptances (Fall 2026): {metrics['q6']}")
 
                 # Q7: JHU, Masters, CS
@@ -132,22 +131,26 @@ def get_metrics():
                         TO_CHAR(date_added, 'Month') as month_name, 
                         COUNT(*) as count 
                     FROM applicants 
+                    WHERE date_added IS NOT NULL
                     GROUP BY month_name 
                     ORDER BY count DESC;
                 """)
                 metrics['q11'] = cur.fetchall()
                 print("\n11. Application Volume by Month:")
                 for row in metrics['q11']:
-                    print(f"    - {row[0].strip()}: {row[1]} entries")
+                    # Defensive check if row is well-formed
+                    if row and row[0]:
+                        print(f"    - {row[0].strip()}: {row[1]} entries")
                 
                 print("-" * 50)
                 print("Report complete.\n")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred in get_metrics: {e}")
+        # Re-raise so testing framework knows it failed
+        raise e
         
     return metrics
 
 if __name__ == "__main__":
-    # If run directly from the terminal, it will execute and print.
     get_metrics()

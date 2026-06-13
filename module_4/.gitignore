@@ -1,0 +1,15 @@
+# Virtual Environment
+venv/
+env/
+
+# Pytest and Coverage caches
+.pytest_cache/
+.coverage
+coverage_summary.txt
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Sphinx built docs (we only commit the source files, not the built HTML)
+docs/build/

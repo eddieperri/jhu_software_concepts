@@ -7,13 +7,10 @@ from datetime import datetime
 # Load environment variables
 load_dotenv()
 
-DB_PARAMS = {
-    "dbname": "thegradcafe",
-    "user": "postgres",
-    "password": os.environ.get("DB_PASSWORD"), 
-    "host": "localhost",
-    "port": 5432
-}
+def get_db_connection():
+    """Helper to establish a connection using the environment variable."""
+    db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/thegradcafe')
+    return psycopg.connect(conninfo=db_url)
 
 def clean_numeric(val, min_val, max_val):
     """Helper to safely convert strings to floats and enforce logical bounds."""
@@ -28,57 +25,88 @@ def clean_numeric(val, min_val, max_val):
     except (ValueError, TypeError):
         return None # Not a number
 
-def load_data():
-    print("Loading JSON data...")
-    # Make sure this path matches your folder structure
-    with open('web_scraping/applicant_data.json', 'r', encoding='utf-8') as file:
+def load_data(json_path='src/web_scraping/applicant_data.json'):
+    """
+    Loads JSON data into PostgreSQL. 
+    Accepts a filepath parameter to allow testing with fake data.
+    """
+    print(f"Loading JSON data from {json_path}...")
+    
+    # Check if file exists (crucial for passing tests that simulate missing files)
+    if not os.path.exists(json_path):
+        raise FileNotFoundError(f"Data file not found at {json_path}")
+        
+    with open(json_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
 
     print(f"Found {len(data)} records. Connecting to database...")
     
     try:
-        with psycopg.connect(**DB_PARAMS) as conn:
+        with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Wipe the table to ensure clean state
-                cur.execute("TRUNCATE TABLE applicants;")
+                # 1. Ensure the table and uniqueness constraint exist.
+                # We use 'url' as the unique identifier to prevent duplicate rows
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS applicants (
+                        p_id SERIAL PRIMARY KEY,
+                        program TEXT NOT NULL,
+                        comments TEXT,
+                        date_added DATE,
+                        url TEXT UNIQUE NOT NULL,
+                        status TEXT NOT NULL,
+                        term TEXT NOT NULL,
+                        us_or_international TEXT,
+                        gpa NUMERIC,
+                        gre NUMERIC,
+                        gre_v NUMERIC,
+                        gre_aw NUMERIC,
+                        degree TEXT,
+                        llm_generated_program TEXT,
+                        llm_generated_university TEXT
+                    );
+                """)
                 
-                for index, row in enumerate(data, start=1):
+                # 2. Insert rows, respecting the uniqueness policy
+                for row in data:
                     # Clean data using our helper
                     gpa = clean_numeric(row.get("uGPA"), 0.0, 4.0)
                     gre_q = clean_numeric(row.get("GRE Quant"), 130, 170)
                     gre_v = clean_numeric(row.get("GRE Verbal"), 130, 170)
                     gre_aw = clean_numeric(row.get("GRE AW"), 0.0, 6.0)
 
-                    raw_date = row.get("date added") # e.g., "Added on May 29, 2026"
+                    raw_date = row.get("date added")
                     clean_date = None
                     if raw_date:
                         try:
-                            # Remove "Added on " to leave "May 29, 2026"
                             date_str = raw_date.replace("Added on ", "")
                             clean_date = datetime.strptime(date_str, "%b %d, %Y").date()
                         except ValueError:
-                            clean_date = None # If parsing fails, store NULL
+                            clean_date = None 
                     
-                    is_intl = row.get("I/International") == "International"
+                    # The URL is required for our uniqueness constraint. 
+                    # If it's missing, we skip the row to avoid database errors.
+                    url = row.get("result url")
+                    if not url:
+                        continue
 
-                    # Execute Insert
+                    # Execute Insert with Idempotency constraint (ON CONFLICT DO NOTHING)
                     cur.execute("""
                         INSERT INTO applicants (
-                            p_id, program, comments, date_added, url, status, term,
+                            program, comments, date_added, url, status, term,
                             us_or_international, gpa, gre, gre_v, gre_aw, degree,
                             llm_generated_program, llm_generated_university
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (url) DO NOTHING;
                     """, (
-                        index, 
-                        row.get("program"), 
+                        row.get("program", "Unknown Program"), # Ensure required fields are met
                         row.get("comments"), 
                         clean_date,
-                        row.get("result url"), 
-                        row.get("status"), 
-                        row.get("term"),
-                        row.get("I/International"), # Keeping as text to match rubric
+                        url, 
+                        row.get("status", "Unknown Status"), 
+                        row.get("term", "Unknown Term"),
+                        row.get("I/International"),
                         gpa, 
-                        gre_q, # This maps to the SQL 'gre' column
+                        gre_q, 
                         gre_v, 
                         gre_aw, 
                         row.get("Degree"),
@@ -91,6 +119,8 @@ def load_data():
 
     except Exception as e:
         print(f"An error occurred: {e}")
+        # Re-raise the exception so Pytest can catch it during error-path testing
+        raise e 
 
 if __name__ == "__main__":
     load_data()
