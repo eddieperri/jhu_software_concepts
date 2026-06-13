@@ -1,5 +1,8 @@
 import pytest
 import json
+import subprocess
+from unittest.mock import patch
+from flask_app import create_app, default_pipeline_runner
 
 @pytest.mark.buttons
 def test_pull_data_success(client):
@@ -64,3 +67,26 @@ def test_busy_gating_update_analysis(client, app):
     
     data = json.loads(response.data)
     assert data.get("busy") is True
+
+@pytest.mark.buttons
+@patch('flask_app.subprocess.run')
+def test_pipeline_failure_releases_lock(mock_run):
+    """
+    Tests the negative/error path where the ETL pipeline crashes.
+    Ensures the application catches the error and correctly releases 
+    the IS_SCRAPING lock so the system does not permanently freeze.
+    """
+    # 1. Create a fresh test application
+    app = create_app()
+    
+    # 2. Simulate a fatal crash when the pipeline tries to run the scraper
+    mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd='scrape.py')
+    
+    # 3. Manually lock the app (simulating the start of the /pull-data route)
+    app.config['IS_SCRAPING'] = True
+    
+    # 4. Execute the pipeline runner directly to test its internal error handling
+    default_pipeline_runner(app)
+    
+    # 5. Assert the lock was safely released despite the violent crash!
+    assert app.config['IS_SCRAPING'] is False

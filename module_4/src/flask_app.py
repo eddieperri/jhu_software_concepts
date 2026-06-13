@@ -61,7 +61,7 @@ def create_app(test_config=None, pipeline_runner=None):
     :rtype: flask.Flask
     """
     app = Flask(__name__)
-    app.secret_key = "jhu_super_secret_key"
+    app.secret_key = os.environ.get('SECRET_KEY', 'dev-fallback-key')
     
     # Default Configuration
     app.config['IS_SCRAPING'] = False

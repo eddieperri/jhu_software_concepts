@@ -56,3 +56,13 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Operational Notes
+-----------------
+* **Busy-State Policy:** The application uses a global ``IS_SCRAPING`` boolean flag to lock the ``/pull-data`` and ``/update-analysis`` endpoints, returning a ``409 Conflict`` if a user attempts to trigger an action while the ETL pipeline is active.
+* **Idempotency & Uniqueness:** The PostgreSQL database enforces a ``UNIQUE`` constraint on the applicant's ``url`` field. Duplicate JSON payloads trigger an ``ON CONFLICT DO NOTHING`` policy, ensuring safe, repeatable data pulls.
+
+Troubleshooting
+---------------
+* **PostgreSQL Authentication Errors:** If you receive a ``password authentication failed`` error locally, ensure your terminal is running from the ``module_4`` directory so the app can locate your ``.env`` file.
+* **Missing Pytest Coverage:** If running ``pytest`` warns about missing markers or skips coverage reporting, ensure your terminal is in the same directory as ``pytest.ini``.
