@@ -164,9 +164,9 @@
       {% endif %}
     {% endwith %}
 
-<div id="status-banner" class="flash-msg flash-warning" style="display: none; text-align: center; font-size: 1.2rem;">
+    <div id="status-banner" class="flash-msg flash-warning" style="display: none; text-align: center; font-size: 1.2rem;">
         ⚠️ Scraping in progress. Please wait...
-</div>
+    </div>
 
     <div class="header">
         <div class="title-section">
@@ -176,16 +176,12 @@
         
         <div class="actions">
             <div class="action-group">
-                <form action="/pull_data" method="POST" style="width: 100%;">
-                    <button type="submit" class="btn btn-pull">Pull Data</button>
-                </form>
+                <button id="btn-pull" data-testid="pull-data-btn" class="btn btn-pull">Pull Data</button>
                 <p class="help-text">Runs the web scraper to safely pull and load new data into the database.</p>
             </div>
             
             <div class="action-group">
-                <form action="/update_analysis" method="POST" style="width: 100%;">
-                    <button type="submit" class="btn btn-update">Update Analysis</button>
-                </form>
+                <button id="btn-update" data-testid="update-analysis-btn" class="btn btn-update">Update Analysis</button>
                 <p class="help-text">Refreshes the page to show the most up-to-date analysis. Will not execute if a scrape is active.</p>
             </div>
         </div>
@@ -198,7 +194,7 @@
 
     <div class="qa-card">
         <p class="question">2. What percentage of entries are from International students (not American or Other) (to two decimal places)?</p>
-        <p class="answer"><span class="answer-label">Answer:</span> Percent International: {{ metrics.q2 }}%</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Percent International: {{ "%.2f" | format(metrics.q2 | float) }}%</p>
     </div>
 
     <div class="qa-card">
@@ -213,7 +209,7 @@
 
     <div class="qa-card">
         <p class="question">5. What percent of entries for Fall 2026 are Acceptances (to two decimal places)?</p>
-        <p class="answer"><span class="answer-label">Answer:</span> Acceptance percent: {{ metrics.q5 }}%</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Acceptance percent: {{ "%.2f" | format(metrics.q5 | float) }}%</p>
     </div>
 
     <div class="qa-card">
@@ -257,22 +253,50 @@
             </ul>
         </div>
     </div>
+
 <script>
         const banner = document.getElementById('status-banner');
         const buttons = document.querySelectorAll('button');
+        const pullBtn = document.getElementById('btn-pull');
+        const updateBtn = document.getElementById('btn-update');
 
+        // REFACTORED: Event Listeners for the JSON API endpoints
+        pullBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/pull-data', { method: 'POST' });
+                if (response.status === 202) {
+                    alert("Data pull initiated! Scraping is now running in the background.");
+                } else if (response.status === 409) {
+                    alert("A data pull is already running in the background! Please wait.");
+                }
+            } catch (e) {
+                console.error("Fetch failed:", e);
+            }
+        });
+
+        updateBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/update-analysis', { method: 'POST' });
+                if (response.status === 200) {
+                    window.location.reload();
+                } else if (response.status === 409) {
+                    alert("Cannot update analysis. The scraper is currently writing to the database.");
+                }
+            } catch (e) {
+                console.error("Fetch failed:", e);
+            }
+        });
+
+        // Polling loop remains unchanged
         setInterval(async () => {
             try {
                 const response = await fetch('/status');
                 const data = await response.json();
 
                 if (data.is_scraping) {
-                    // Show the banner if it exists
                     if (banner) banner.style.display = 'block';
-                    // Disable buttons
                     buttons.forEach(btn => btn.disabled = true);
                 } else {
-                    // If it WAS disabled, we know the scrape finished, so reload
                     if (buttons[0].disabled) {
                         window.location.reload();
                     }
