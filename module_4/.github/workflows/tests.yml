@@ -1,0 +1,50 @@
+name: Module 4 Tests
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # 1. Spin up a temporary PostgreSQL database for the tests
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    # 2. Check out your repository code
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    # 3. Set up Python (Using 3.9 based on your terminal output)
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+
+    # 4. Install your exact dependencies
+    - name: Install dependencies
+      working-directory: ./module_4
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # 5. Run the test suite with coverage
+    - name: Run Pytest
+      working-directory: ./module_4
+      env:
+        # Provide the secure URL for the temporary GitHub Postgres container
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
+      run: |
+        pytest -m "web or buttons or analysis or db or integration"
