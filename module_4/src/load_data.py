@@ -8,12 +8,35 @@ from datetime import datetime
 load_dotenv()
 
 def get_db_connection():
-    """Helper to establish a connection using the environment variable."""
+    """
+    Establishes and returns a connection to the PostgreSQL database.
+
+    Retrieves the database connection string from the 'DATABASE_URL'
+    environment variable. Defaults to a local test configuration if not found.
+
+    :returns: An active PostgreSQL connection instance.
+    :rtype: psycopg.Connection
+    """
     db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/thegradcafe')
     return psycopg.connect(conninfo=db_url)
 
 def clean_numeric(val, min_val, max_val):
-    """Helper to safely convert strings to floats and enforce logical bounds."""
+    """
+    Sanitizes and validates numeric data scraped from the web.
+
+    Attempts to convert a raw string or numeric input into a float.
+    Enforces logical minimum and maximum boundaries to filter out
+    user-entry errors and scraping artifacts.
+
+    :param val: The raw input value to be sanitized (e.g., from a JSON field).
+    :type val: str, float, or None
+    :param min_val: The absolute minimum acceptable limit for the value.
+    :type min_val: float
+    :param max_val: The absolute maximum acceptable limit for the value.
+    :type max_val: float
+    :returns: The sanitized float if within bounds, or None if invalid/out-of-bounds.
+    :rtype: float or None
+    """
     try:
         if val is None or val == "":
             return None
@@ -27,8 +50,18 @@ def clean_numeric(val, min_val, max_val):
 
 def load_data(json_path='src/web_scraping/applicant_data.json'):
     """
-    Loads JSON data into PostgreSQL. 
-    Accepts a filepath parameter to allow testing with fake data.
+    Loads the standardized applicant JSON dataset into PostgreSQL.
+
+    This function handles the extraction of JSON data, connects to the 
+    database, and executes the table creation (if missing). It sanitizes 
+    all fields using boundary constraints and handles date formatting. 
+    Idempotency is guaranteed via an 'ON CONFLICT DO NOTHING' unique 
+    constraint applied to the applicant's result URL.
+
+    :param json_path: The file path to the target JSON data. Defaults to the main scraped dataset.
+    :type json_path: str
+    :raises FileNotFoundError: If the specified JSON data file does not exist.
+    :raises Exception: If a database transaction fails or schema constraints are violated.
     """
     print(f"Loading JSON data from {json_path}...")
     

@@ -5,12 +5,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_db_connection():
-    """Helper to establish a connection using the environment variable."""
+    """
+    Establishes and returns a connection to the PostgreSQL database.
+
+    Retrieves the database connection string from the 'DATABASE_URL'
+    environment variable to allow seamless switching between testing 
+    and production environments.
+
+    :returns: An active PostgreSQL connection instance.
+    :rtype: psycopg.Connection
+    """
     db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/thegradcafe')
     return psycopg.connect(conninfo=db_url)
 
 def get_metrics():
-    """Runs analysis, prints the report to the terminal, and returns a dict for Flask."""
+    """
+    Executes analytical SQL queries against the applicants dataset.
+
+    This function runs a comprehensive suite of queries to calculate overall
+    applicant volume, demographic percentages, average standardized test scores, 
+    and acceptance rates. It prints a formatted report directly to the terminal
+    and bundles the raw data into a dictionary for rendering in the web application.
+
+    :returns: A dictionary containing the aggregated metrics for all 11 analytical questions.
+    :rtype: dict
+    :raises Exception: If a database connection fails or a SQL query encounters an error.
+    """
     print("Running Assignment Analysis Report...\n")
     print("-" * 50)
     

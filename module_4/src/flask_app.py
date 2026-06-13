@@ -3,10 +3,22 @@ import sys
 import subprocess
 import threading
 from flask import Flask, render_template, jsonify, request
-from query_data import get_metrics  # Importing your DRY database logic
+from query_data import get_metrics  
 
 def default_pipeline_runner(app_instance):
-    """The real ETL pipeline using absolute paths and subprocesses."""
+    """
+    Executes the full Grad Cafe data pipeline: scraping, cleaning, and loading.
+
+    This function runs as a background thread to prevent blocking the Flask application.
+    It executes the scrape.py, clean.py, and load_data.py scripts sequentially
+    using the subprocess module. It manages the IS_SCRAPING state flag to lock
+    UI elements during execution.
+
+    :param app_instance: The current Flask application instance containing the configuration.
+    :type app_instance: flask.Flask
+    :raises subprocess.CalledProcessError: If any of the underlying ETL scripts fail during execution.
+    :raises Exception: For any other unhandled errors during pipeline execution.
+    """
     app_instance.config['IS_SCRAPING'] = True
     base_dir = os.getcwd() 
     
@@ -34,7 +46,20 @@ def default_pipeline_runner(app_instance):
         app_instance.config['IS_SCRAPING'] = False
 
 def create_app(test_config=None, pipeline_runner=None):
-    """Flask application factory."""
+    """
+    Flask application factory for the Grad Cafe Analytics system.
+
+    Constructs and configures the Flask application, setting up database connections
+    and registering routes. It supports dependency injection for testing purposes,
+    allowing for mocked configurations and pipeline runners.
+
+    :param test_config: Optional mapping of configuration values to override the defaults for testing.
+    :type test_config: dict, optional
+    :param pipeline_runner: Optional callable to override the default ETL pipeline execution. Used for injecting mocked runners during testing.
+    :type pipeline_runner: callable, optional
+    :returns: The configured Flask application instance ready to serve requests.
+    :rtype: flask.Flask
+    """
     app = Flask(__name__)
     app.secret_key = "jhu_super_secret_key"
     
@@ -51,37 +76,58 @@ def create_app(test_config=None, pipeline_runner=None):
 
     @app.route('/analysis', methods=['GET'])
     def analysis():
-        """Renders the dashboard. Rubric requires GET /analysis"""
+        """
+        Renders the main analysis dashboard.
+
+        Retrieves the latest compiled metrics from the PostgreSQL database using
+        the query_data module and injects them into the index.html template.
+
+        :returns: Rendered HTML page displaying the Grad Cafe analysis metrics.
+        :rtype: str
+        """
         metrics = get_metrics()
         return render_template('index.html', metrics=metrics, is_scraping=app.config['IS_SCRAPING'])
 
     @app.route('/pull-data', methods=['POST'])
     def pull_data():
-        """Triggered by the 'Pull Data' button. Rubric requires POST /pull-data"""
+        """
+        Endpoint to trigger the asynchronous ETL data pipeline.
+
+        If a scraping process is not already active, this endpoint initiates the
+        pipeline in a background thread and returns a 202 Accepted status. If a
+        process is already running, it returns a 409 Conflict status.
+
+        :returns: JSON response indicating success or busy state, along with the appropriate HTTP status code.
+        :rtype: tuple
+        """
         if app.config.get('IS_SCRAPING'):
-            # Rubric: Return 409 with {"busy": true} when a pull is in progress
             return jsonify({"busy": True}), 409
         
         # Run pipeline in background thread
         thread = threading.Thread(target=runner, args=(app,))
         thread.start()
         
-        # Rubric: Return 202 with {"ok": true} when starting
         return jsonify({"ok": True}), 202
 
     @app.route('/update-analysis', methods=['POST'])
     def update_analysis():
-        """Triggered by the 'Update Analysis' button. Rubric requires POST /update-analysis"""
+        """
+        Endpoint to verify if the application is ready to update the analysis display.
+
+        Acts as a gating mechanism for the frontend. If the background scraper is
+        currently running, it returns a 409 Conflict to prevent simultaneous database transactions.
+        Otherwise, it returns a 200 OK.
+
+        :returns: JSON response indicating readiness state, along with the appropriate HTTP status code.
+        :rtype: tuple
+        """
         if app.config.get('IS_SCRAPING'):
-            # Rubric: Return 409 with {"busy": true} when a pull is in progress
             return jsonify({"busy": True}), 409
             
-        # Rubric: Returns 200 when not busy
         return jsonify({"ok": True}), 200
 
     return app
 
 if __name__ == '__main__':
-    # When running normally, spin up the app using the factory
     app = create_app()
     app.run(debug=True)
