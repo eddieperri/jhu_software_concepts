@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grad School Cafe Data Analysis</title>
+    <style>
+        /* Modern, professional styling */
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f9; /* Soft grey background */
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* Soft drop shadow */
+        }
+
+        /* Flexbox Header to push the Update button to the Top Right */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .title-section h1 {
+            margin: 0;
+            font-size: 2.8rem;
+            color: #2c3e50;
+            letter-spacing: -0.5px;
+        }
+
+        .title-section h4 {
+            margin: 5px 0 0 0;
+            color: #7f8c8d;
+            font-weight: 400;
+            font-size: 1.1rem;
+        }
+
+        /* Controls / Buttons Styling */
+        .actions {
+            display: flex;
+            gap: 20px;
+            text-align: right;
+        }
+
+        .action-group {
+            max-width: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            width: 100%;
+        }
+
+        button:disabled {
+            background-color: #bdc3c7 !important; /* Grey color */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-pull {
+            background-color: #3498db;
+            color: #ffffff;
+        }
+        .btn-pull:hover { background-color: #2980b9; }
+
+        .btn-update {
+            background-color: #27ae60;
+            color: #ffffff;
+        }
+        .btn-update:hover { background-color: #219653; }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #95a5a6;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        /* Q&A Card Layout */
+        .qa-card {
+            background: #fdfdfd;
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #34495e; /* Professional accent line */
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+        }
+        
+        .qa-card:hover {
+            transform: translateX(5px); /* Slight bump on hover */
+        }
+
+        .question {
+            font-weight: 600;
+            font-size: 1.15rem;
+            margin: 0 0 12px 0;
+            color: #2c3e50;
+        }
+
+        .answer {
+            margin: 0;
+            color: #555;
+            line-height: 1.6;
+            font-size: 1.05rem;
+        }
+
+        .answer-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        ul.clean-list {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+            color: #555;
+        }
+        ul.clean-list li {
+            margin-bottom: 5px;
+        }
+
+        /* Alerts / Flash Messages */
+        .flash-msg {
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+<div id="status-banner" class="flash-msg flash-warning" style="display: none; text-align: center; font-size: 1.2rem;">
+        ⚠️ Scraping in progress. Please wait...
+</div>
+
+    <div class="header">
+        <div class="title-section">
+            <h1>Analysis.</h1>
+            <h4>TheGradCafe Scraped Data Analysis Dashboard</h4>
+        </div>
+        
+        <div class="actions">
+            <div class="action-group">
+                <form action="/pull_data" method="POST" style="width: 100%;">
+                    <button type="submit" class="btn btn-pull">Pull Data</button>
+                </form>
+                <p class="help-text">Runs the web scraper to safely pull and load new data into the database.</p>
+            </div>
+            
+            <div class="action-group">
+                <form action="/update_analysis" method="POST" style="width: 100%;">
+                    <button type="submit" class="btn btn-update">Update Analysis</button>
+                </form>
+                <p class="help-text">Refreshes the page to show the most up-to-date analysis. Will not execute if a scrape is active.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">1. How many entries do you have in your database who have applied for Fall 2026?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Applicant count: {{ metrics.q1 }}</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">2. What percentage of entries are from International students (not American or Other) (to two decimal places)?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Percent International: {{ metrics.q2 }}%</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">3. What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Average GPA: {{ metrics.q3_gpa }}, Average GRE Quant: {{ metrics.q3_gre }}, Average GRE Verbal: {{ metrics.q3_grev }}, Average GRE AW: {{ metrics.q3_greaw }}</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">4. What is the average GPA of American students in Fall 2026?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Average GPA American: {{ metrics.q4 }}</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">5. What percent of entries for Fall 2026 are Acceptances (to two decimal places)?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Acceptance percent: {{ metrics.q5 }}%</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">6. What is the average GPA of applicants who applied for Fall 2026 who applied for Acceptances?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Average GPA Acceptance: {{ metrics.q6 }}</p>
+    </div>
+    
+    <div class="qa-card">
+        <p class="question">7. How many entries are from applicants who applied to JHU for a masters degrees in Computer Science?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> JHU MS CS Applicants: {{ metrics.q7 }}</p>
+    </div>
+    
+    <div class="qa-card">
+        <p class="question">8. How many entries from 2026 are acceptances from applicants who applied to Georgetown University, MIT, Stanford University, or Carnegie Mellon University for a PhD in Computer Science?</p>
+        <p class="answer"><span class="answer-label">Answer:</span> Top School CS PhD Acceptances: {{ metrics.q8 }}</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">9. Do your numbers for question 8 change if you use LLM Generated Fields (rather than your downloaded fields)?</p>
+        <p class="answer"><span class="answer-label">Answer:</span>  Using the raw user-input fields captured <strong>{{ metrics.q9_raw }}</strong> acceptances. The standardized LLM fields captured <strong>{{ metrics.q8 }}</strong> acceptances.</p>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">10. What are the top 5 most competitive programs by total application volume?</p>
+        <div class="answer"><span class="answer-label">Answer:</span> 
+            <ul class="clean-list">
+            {% for row in metrics.q10 %}
+                <li><strong>{{ row[0] }}:</strong> {{ row[1] }} applications</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="qa-card">
+        <p class="question">11. Which months see the highest volume of admissions results posted?</p>
+        <div class="answer"><span class="answer-label">Answer:</span> 
+            <ul class="clean-list">
+            {% for row in metrics.q11 %}
+                <li><strong>{{ row[0].strip() }}:</strong> {{ row[1] }} entries</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+<script>
+        const banner = document.getElementById('status-banner');
+        const buttons = document.querySelectorAll('button');
+
+        setInterval(async () => {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                if (data.is_scraping) {
+                    // Show the banner if it exists
+                    if (banner) banner.style.display = 'block';
+                    // Disable buttons
+                    buttons.forEach(btn => btn.disabled = true);
+                } else {
+                    // If it WAS disabled, we know the scrape finished, so reload
+                    if (buttons[0].disabled) {
+                        window.location.reload();
+                    }
+                }
+            } catch (e) {
+                console.error("Status check failed:", e);
+            }
+        }, 2000);
+</script>
+</body>
+</html>
