@@ -25,18 +25,21 @@ def test_end_to_end_flow(client, app, test_db, fake_json_data, monkeypatch):
     # synchronously without race conditions, we call the runner directly:
     flask_app.default_pipeline_runner(app)
     
-    # Verify 2 rows were inserted by the pipeline
+    # Verify 3 rows were inserted by the pipeline
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM applicants;")
-            assert cur.fetchone()[0] == 2
+                cur.execute("SELECT COUNT(*) FROM applicants;")
+                # Update this from 2 to 3
+                assert cur.fetchone()[0] == 3
             
     # Run the pipeline again to test your uniqueness constraint (idempotency)
     flask_app.default_pipeline_runner(app)
+ # Verify the database STILL only has 3 rows (no duplicates)
     with psycopg.connect(conninfo=test_db) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM applicants;")
-            assert cur.fetchone()[0] == 2 # Should STILL be 2!
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM applicants;")
+                # Updated this from 2 to 3
+                assert cur.fetchone()[0] == 3
             
     # 2. POST /update-analysis endpoint works when idle
     resp_update = client.post('/update-analysis')
@@ -45,7 +48,7 @@ def test_end_to_end_flow(client, app, test_db, fake_json_data, monkeypatch):
     # 3. GET /analysis shows the updated database data
     resp_get = client.get('/analysis')
     html = resp_get.data.decode('utf-8')
-    assert "Applicant count: 2" in html
+    assert "Applicant count: 3" in html
 
 @pytest.mark.integration
 def test_error_paths_for_100_coverage(monkeypatch, app, tmp_path):

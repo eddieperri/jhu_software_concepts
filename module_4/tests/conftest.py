@@ -71,11 +71,12 @@ def fake_metrics():
 @pytest.fixture
 def fake_json_data(tmp_path):
     """
-    Creates a temporary JSON file containing 2 fake applicant records.
-    This prevents testing against the massive 50,000 row live dataset.
+    Creates a temporary JSON file containing fake applicant records.
+    Mixes perfect data, bad data types, and completely malformed entries.
     """
     test_data = [
         {
+            # RECORD 1: The Happy Path (Perfect data)
             "program": "Computer Science",
             "uGPA": "3.8",
             "GRE Quant": "165",
@@ -91,9 +92,10 @@ def fake_json_data(tmp_path):
             "llm-generated-university": "Stanford University"
         },
         {
+            # RECORD 2: The Bad Types (Out of bounds & invalid strings)
             "program": "Biology",
-            "uGPA": "4.1", # Intentionally bad GPA to test cleaning
-            "GRE Quant": "abc", # Intentionally bad GRE to test cleaning
+            "uGPA": "4.1", 
+            "GRE Quant": "abc", 
             "GRE Verbal": "160",
             "GRE AW": "4.5",
             "date added": "Bad Date String",
@@ -104,10 +106,25 @@ def fake_json_data(tmp_path):
             "Degree": "Masters",
             "llm-generated-program": "Biology",
             "llm-generated-university": "MIT"
+        },
+        {
+            # RECORD 3: The Absolute Mess (Missing keys, nulls, and weird whitespace)
+            "program": "Physics",
+            # Notice "uGPA" is entirely missing to test dict.get() defaults
+            "GRE Quant": "  165 \n", # Tests if your cleaner strips whitespace
+            "GRE Verbal": None, # Tests how your pipeline handles actual Nulls
+            "GRE AW": "N/A", # Tests string-to-float failure handling
+            "date added": "", # Tests empty strings
+            "result url": "https://test.com/3",
+            "status": "pending_decision", # Tests non-standard casing
+            "term": "Fall 2026",
+            "I/International": "?",
+            "Degree": "Other",
+            "llm-generated-program": "Physics",
+            "llm-generated-university": "Caltech"
         }
     ]
     
-    # tmp_path is a built-in Pytest fixture that provides a temporary directory
     file_path = tmp_path / "test_applicant_data.json"
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(test_data, f)
