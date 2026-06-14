@@ -20,11 +20,13 @@ def default_pipeline_runner(app_instance):
     :raises Exception: For any other unhandled errors during pipeline execution.
     """
     app_instance.config['IS_SCRAPING'] = True
-    base_dir = os.getcwd() 
     
-    scrape_script = os.path.join(base_dir, "src", "web_scraping", "scrape.py")
-    clean_script = os.path.join(base_dir, "src", "web_scraping", "clean.py")
-    load_script = os.path.join(base_dir, "src", "load_data.py")
+    # Get the absolute path of the directory containing THIS file (src)
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    scrape_script = os.path.join(src_dir, "web_scraping", "scrape.py")
+    clean_script = os.path.join(src_dir, "web_scraping", "clean.py")
+    load_script = os.path.join(src_dir, "load_data.py")
     
     try:
         print("Starting pipeline...")
@@ -113,7 +115,12 @@ def create_app(test_config=None, pipeline_runner=None):
         thread.start()
         
         return jsonify({"ok": True}), 202
-
+    
+    @app.route('/status', methods=['GET'])
+    def status():
+        """Returns the current scraping state for the frontend polling."""
+        return jsonify({"is_scraping": app.config.get('IS_SCRAPING', False)})
+    
     @app.route('/update-analysis', methods=['POST'])
     def update_analysis():
         """

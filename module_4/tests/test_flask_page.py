@@ -1,6 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
-import flask_app  # <-- Changed this line
+import flask_app 
+import json
 
 @pytest.mark.web
 def test_app_factory_and_routes(app):
@@ -66,3 +67,18 @@ def test_home_redirect(client):
     
     # Verify that the location it redirects to is the analysis page
     assert '/analysis' in response.location
+
+@pytest.mark.web
+def test_status_endpoint(client):
+    """
+    Test GET /status returns 200 and the correct JSON structure.
+    """
+    response = client.get('/status')
+    
+    # Verify the route is accessible
+    assert response.status_code == 200
+    
+    # Verify it returns the expected boolean state
+    data = json.loads(response.data)
+    assert "is_scraping" in data
+    assert data["is_scraping"] is False
