@@ -1,3 +1,8 @@
+"""
+Pytest suite for verifying Flask application routing and HTML rendering.
+Ensures the factory pattern works, routes are active, and UI components render with stable selectors.
+"""
+
 import pytest
 from bs4 import BeautifulSoup
 import flask_app 

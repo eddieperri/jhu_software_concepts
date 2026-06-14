@@ -1,3 +1,8 @@
+"""
+Pytest suite for verifying database operations.
+Tests schema constraints, data loading idempotency, and query functionality.
+"""
+
 import pytest
 import psycopg
 import load_data
@@ -25,7 +30,7 @@ def test_load_data_and_constraints(test_db, fake_json_data):
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Update this from 2 to 3
+                # Updated this from 2 to 3
                 assert cur.fetchone()[0] == 3 
 
         # 4. Test idempotency (run it again!)
@@ -34,7 +39,7 @@ def test_load_data_and_constraints(test_db, fake_json_data):
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Update this from 2 to 3 as well
+                # Updated this from 2 to 3 as well
                 assert cur.fetchone()[0] == 3
 
 @pytest.mark.db

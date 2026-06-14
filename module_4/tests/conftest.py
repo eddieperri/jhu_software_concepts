@@ -1,3 +1,8 @@
+"""
+Pytest fixtures and configuration for the Grad Cafe Analytics application.
+Provides mocked database connections, fake ETL pipelines, and dirty data for testing.
+"""
+
 import pytest
 import os
 import sys
@@ -76,7 +81,7 @@ def fake_json_data(tmp_path):
     """
     test_data = [
         {
-            # RECORD 1: The Happy Path (Perfect data)
+            # RECORD 1 (Perfect data)
             "program": "Computer Science",
             "uGPA": "3.8",
             "GRE Quant": "165",
@@ -92,7 +97,7 @@ def fake_json_data(tmp_path):
             "llm-generated-university": "Stanford University"
         },
         {
-            # RECORD 2: The Bad Types (Out of bounds & invalid strings)
+            # RECORD 2 (Out of bounds & invalid strings)
             "program": "Biology",
             "uGPA": "4.1", 
             "GRE Quant": "abc", 
@@ -108,11 +113,11 @@ def fake_json_data(tmp_path):
             "llm-generated-university": "MIT"
         },
         {
-            # RECORD 3: The Absolute Mess (Missing keys, nulls, and weird whitespace)
+            # RECORD 3(Missing keys, nulls, and weird whitespace)
             "program": "Physics",
             # Notice "uGPA" is entirely missing to test dict.get() defaults
-            "GRE Quant": "  165 \n", # Tests if your cleaner strips whitespace
-            "GRE Verbal": None, # Tests how your pipeline handles actual Nulls
+            "GRE Quant": "  165 \n", # Tests if cleaner strips whitespace
+            "GRE Verbal": None, # Tests how pipeline handles actual Nulls
             "GRE AW": "N/A", # Tests string-to-float failure handling
             "date added": "", # Tests empty strings
             "result url": "https://test.com/3",

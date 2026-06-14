@@ -1,3 +1,8 @@
+"""
+Pytest suite for verifying the HTML rendering and formatting of the analysis dashboard.
+Ensures UI elements are properly labeled and mathematical outputs are strictly rounded.
+"""
+
 import pytest
 import re
 from bs4 import BeautifulSoup

@@ -1,3 +1,8 @@
+"""
+Pytest suite for verifying Flask routing, button behaviors, and concurrency locks.
+Includes tests for busy-state gating and negative error-path handling.
+"""
+
 import pytest
 import json
 import subprocess

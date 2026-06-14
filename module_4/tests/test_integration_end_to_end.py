@@ -1,3 +1,9 @@
+"""
+Pytest suite for end-to-end integration and edge-case coverage.
+Verifies the full ETL pipeline flow and intentionally triggers exception blocks 
+to guarantee 100% test coverage across all modules.
+"""
+
 import pytest
 import json
 import os
@@ -29,14 +35,14 @@ def test_end_to_end_flow(client, app, test_db, fake_json_data, monkeypatch):
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Update this from 2 to 3
+                # Updated this from 2 to 3
                 assert cur.fetchone()[0] == 3
             
     # Run the pipeline again to test your uniqueness constraint (idempotency)
     flask_app.default_pipeline_runner(app)
- # Verify the database STILL only has 3 rows (no duplicates)
+    # Verify the database STILL only has 3 rows (no duplicates)
     with psycopg.connect(conninfo=test_db) as conn:
-            with conn.cursor() as cur:
+        with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM applicants;")
                 # Updated this from 2 to 3
                 assert cur.fetchone()[0] == 3
