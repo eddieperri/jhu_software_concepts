@@ -1,0 +1,17 @@
+(venv) PS C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_4> pytest
+..............                                                                                                                                 [100%]
+
+---------- coverage: platform win32, python 3.9.13-final-0 -----------
+Name                  Stmts   Miss  Cover   Missing
+---------------------------------------------------
+src\__init__.py           0      0   100%
+src\flask_app.py         56      0   100%
+src\inspect_data.py      12      0   100%
+src\load_data.py         52      0   100%
+src\query_data.py        64      0   100%
+---------------------------------------------------
+TOTAL                   184      0   100%
+
+Required test coverage of 100% reached. Total coverage: 100.00%
+14 passed in 6.13s
+(venv) PS C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_4> 

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.load_data &mdash; Grad Cafe Analytics 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Grad Cafe Analytics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Grad Cafe Analytics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.load_data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.load_data</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psycopg</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="c1"># Load environment variables</span>
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<div class="viewcode-block" id="get_db_connection">
+<a class="viewcode-back" href="../../src.html#src.load_data.get_db_connection">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_db_connection</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Establishes and returns a connection to the PostgreSQL database.</span>
+
+<span class="sd">    Retrieves the database connection string from the &#39;DATABASE_URL&#39;</span>
+<span class="sd">    environment variable. Defaults to a local test configuration if not found.</span>
+
+<span class="sd">    :returns: An active PostgreSQL connection instance.</span>
+<span class="sd">    :rtype: psycopg.Connection</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">db_url</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DATABASE_URL&#39;</span><span class="p">,</span> <span class="s1">&#39;postgresql://postgres:password@localhost:5432/thegradcafe&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">conninfo</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="clean_numeric">
+<a class="viewcode-back" href="../../src.html#src.load_data.clean_numeric">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clean_numeric</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sanitizes and validates numeric data scraped from the web.</span>
+
+<span class="sd">    Attempts to convert a raw string or numeric input into a float.</span>
+<span class="sd">    Enforces logical minimum and maximum boundaries to filter out</span>
+<span class="sd">    user-entry errors and scraping artifacts.</span>
+
+<span class="sd">    :param val: The raw input value to be sanitized (e.g., from a JSON field).</span>
+<span class="sd">    :type val: str, float, or None</span>
+<span class="sd">    :param min_val: The absolute minimum acceptable limit for the value.</span>
+<span class="sd">    :type min_val: float</span>
+<span class="sd">    :param max_val: The absolute maximum acceptable limit for the value.</span>
+<span class="sd">    :type max_val: float</span>
+<span class="sd">    :returns: The sanitized float if within bounds, or None if invalid/out-of-bounds.</span>
+<span class="sd">    :rtype: float or None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Clean up any potential extra spaces</span>
+        <span class="n">f_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">min_val</span> <span class="o">&lt;=</span> <span class="n">f_val</span> <span class="o">&lt;=</span> <span class="n">max_val</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f_val</span>
+        <span class="k">return</span> <span class="kc">None</span> <span class="c1"># Out of bounds (e.g., GPA &gt; 4.0)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span> <span class="c1"># Not a number</span></div>
+
+
+<div class="viewcode-block" id="load_data">
+<a class="viewcode-back" href="../../src.html#src.load_data.load_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_data</span><span class="p">(</span><span class="n">json_path</span><span class="o">=</span><span class="s1">&#39;src/web_scraping/applicant_data.json&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads the standardized applicant JSON dataset into PostgreSQL.</span>
+
+<span class="sd">    This function handles the extraction of JSON data, connects to the </span>
+<span class="sd">    database, and executes the table creation (if missing). It sanitizes </span>
+<span class="sd">    all fields using boundary constraints and handles date formatting. </span>
+<span class="sd">    Idempotency is guaranteed via an &#39;ON CONFLICT DO NOTHING&#39; unique </span>
+<span class="sd">    constraint applied to the applicant&#39;s result URL.</span>
+
+<span class="sd">    :param json_path: The file path to the target JSON data. Defaults to the main scraped dataset.</span>
+<span class="sd">    :type json_path: str</span>
+<span class="sd">    :raises FileNotFoundError: If the specified JSON data file does not exist.</span>
+<span class="sd">    :raises Exception: If a database transaction fails or schema constraints are violated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading JSON data from </span><span class="si">{</span><span class="n">json_path</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check if file exists (crucial for passing tests that simulate missing files)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">json_path</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data file not found at </span><span class="si">{</span><span class="n">json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records. Connecting to database...&quot;</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">get_db_connection</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+                <span class="c1"># 1. Ensure the table and uniqueness constraint exist.</span>
+                <span class="c1"># We use &#39;url&#39; as the unique identifier to prevent duplicate rows</span>
+                <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                    CREATE TABLE IF NOT EXISTS applicants (</span>
+<span class="s2">                        p_id SERIAL PRIMARY KEY,</span>
+<span class="s2">                        program TEXT NOT NULL,</span>
+<span class="s2">                        comments TEXT,</span>
+<span class="s2">                        date_added DATE,</span>
+<span class="s2">                        url TEXT UNIQUE NOT NULL,</span>
+<span class="s2">                        status TEXT NOT NULL,</span>
+<span class="s2">                        term TEXT NOT NULL,</span>
+<span class="s2">                        us_or_international TEXT,</span>
+<span class="s2">                        gpa NUMERIC,</span>
+<span class="s2">                        gre NUMERIC,</span>
+<span class="s2">                        gre_v NUMERIC,</span>
+<span class="s2">                        gre_aw NUMERIC,</span>
+<span class="s2">                        degree TEXT,</span>
+<span class="s2">                        llm_generated_program TEXT,</span>
+<span class="s2">                        llm_generated_university TEXT</span>
+<span class="s2">                    );</span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">)</span>
+                
+                <span class="c1"># 2. Insert rows, respecting the uniqueness policy</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                    <span class="c1"># Clean data using our helper</span>
+                    <span class="n">gpa</span> <span class="o">=</span> <span class="n">clean_numeric</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uGPA&quot;</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)</span>
+                    <span class="n">gre_q</span> <span class="o">=</span> <span class="n">clean_numeric</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE Quant&quot;</span><span class="p">),</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">170</span><span class="p">)</span>
+                    <span class="n">gre_v</span> <span class="o">=</span> <span class="n">clean_numeric</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE Verbal&quot;</span><span class="p">),</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">170</span><span class="p">)</span>
+                    <span class="n">gre_aw</span> <span class="o">=</span> <span class="n">clean_numeric</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GRE AW&quot;</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">)</span>
+
+                    <span class="n">raw_date</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;date added&quot;</span><span class="p">)</span>
+                    <span class="n">clean_date</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">if</span> <span class="n">raw_date</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">date_str</span> <span class="o">=</span> <span class="n">raw_date</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Added on &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                            <span class="n">clean_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">date_str</span><span class="p">,</span> <span class="s2">&quot;%b </span><span class="si">%d</span><span class="s2">, %Y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="n">clean_date</span> <span class="o">=</span> <span class="kc">None</span> 
+                    
+                    <span class="c1"># The URL is required for our uniqueness constraint. </span>
+                    <span class="c1"># If it&#39;s missing, we skip the row to avoid database errors.</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result url&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">url</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># Execute Insert with Idempotency constraint (ON CONFLICT DO NOTHING)</span>
+                    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                        INSERT INTO applicants (</span>
+<span class="s2">                            program, comments, date_added, url, status, term,</span>
+<span class="s2">                            us_or_international, gpa, gre, gre_v, gre_aw, degree,</span>
+<span class="s2">                            llm_generated_program, llm_generated_university</span>
+<span class="s2">                        ) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)</span>
+<span class="s2">                        ON CONFLICT (url) DO NOTHING;</span>
+<span class="s2">                    &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">(</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;program&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown Program&quot;</span><span class="p">),</span> <span class="c1"># Ensure required fields are met</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;comments&quot;</span><span class="p">),</span> 
+                        <span class="n">clean_date</span><span class="p">,</span>
+                        <span class="n">url</span><span class="p">,</span> 
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown Status&quot;</span><span class="p">),</span> 
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;term&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown Term&quot;</span><span class="p">),</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;I/International&quot;</span><span class="p">),</span>
+                        <span class="n">gpa</span><span class="p">,</span> 
+                        <span class="n">gre_q</span><span class="p">,</span> 
+                        <span class="n">gre_v</span><span class="p">,</span> 
+                        <span class="n">gre_aw</span><span class="p">,</span> 
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Degree&quot;</span><span class="p">),</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm-generated-program&quot;</span><span class="p">),</span> 
+                        <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm-generated-university&quot;</span><span class="p">)</span>
+                    <span class="p">))</span>
+                
+                <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Migration complete! Data sanitized and loaded.&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Re-raise the exception so Pytest can catch it during error-path testing</span>
+        <span class="k">raise</span> <span class="n">e</span> </div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">load_data</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Eddie Perri.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
