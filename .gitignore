@@ -1,1 +1,37 @@
+# =========================
+# Virtual Environments
+# =========================
+venv/
+env/
+
+# =========================
+# Secrets & Configuration
+# =========================
+.env
+
+# =========================
+# Python Cache & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Testing & Coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+# (Note: coverage_summary.txt is intentionally left out so it CAN be committed)
+
+# =========================
+# Sphinx Documentation
+# =========================
+docs/build/
+docs/_build/
+
+# =========================
+# Custom / Local Tools
+# =========================
 module_4/reset_db.py
+reset_db.py
