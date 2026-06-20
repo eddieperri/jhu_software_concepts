@@ -1,0 +1,24 @@
+# Security / Secrets
+.env
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing / Coverage Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Project-specific exclusions 
+# Note: Do NOT ignore dependency.svg, snyk-analysis.png, or coverage_summary.txt

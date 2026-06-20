@@ -1,0 +1,19 @@
+# Web Application & Database
+Flask>=2.3,<4
+psycopg[binary]
+python-dotenv
+
+# Web Scraping & LLM
+beautifulsoup4==4.12.2
+selenium
+requests==2.31.0
+huggingface_hub>=0.23.0
+llama-cpp-python>=0.2.90,<0.3.0
+
+# Testing Tools (Module 4)
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# Documentation Tools (Module 4)
+Sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
