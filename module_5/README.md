@@ -31,3 +31,6 @@ Tests are fully isolated and use temporary database schemas via fixtures.
 To run the full suite and generate a coverage report:
 
 pytest -m "web or buttons or analysis or db or integration"
+
+To check code for various 
+pylint src/

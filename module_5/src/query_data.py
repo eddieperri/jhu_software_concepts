@@ -1,176 +1,143 @@
-import psycopg
+"""
+Module for querying analytical metrics from the Grad Cafe PostgreSQL database.
+Enforces safe SQL composition, inherent row limits, and least-privilege connectivity.
+"""
 import os
+import psycopg
+from psycopg import sql
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def get_db_connection():
     """
-    Establishes and returns a connection to the PostgreSQL database.
-
-    Retrieves the database connection string from the 'DATABASE_URL'
-    environment variable to allow seamless switching between testing 
-    and production environments.
-
-    :returns: An active PostgreSQL connection instance.
-    :rtype: psycopg.Connection
+    Establishes a connection to the database using least-privilege environment definitions.
     """
-    db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/thegradcafe')
-    return psycopg.connect(conninfo=db_url)
+    return psycopg.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        dbname=os.getenv("DB_NAME", "thegradcafe"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def safe_execute(cursor, query_string, limit_val=100):
+    """
+    Utility function to securely clamp limits and execute composed SQL.
+    Enforces Step 2 Rubric limits: clamps requested limit between 1 and 100.
+    """
+    clamped_limit = max(1, min(int(limit_val), 100))
+    composed_query = sql.SQL(query_string + " LIMIT {limit};").format(
+        limit=sql.Literal(clamped_limit)
+    )
+    cursor.execute(composed_query)
+    return cursor
+
+def get_demographic_metrics(cursor, metrics):
+    """Retrieves basic volume and demographic metrics."""
+    # Q1: Applied for Fall 2026
+    safe_execute(cursor, "SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026'", 1)
+    metrics['q1'] = cursor.fetchone()[0]
+
+    # Q2: Percentage of International Students
+    safe_execute(cursor, """
+        SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE us_or_international = 'International') 
+        / NULLIF(COUNT(*), 0), 2) FROM applicants
+    """, 1)
+    metrics['q2'] = cursor.fetchone()[0] or 0.00
+
+def get_academic_metrics(cursor, metrics):
+    """Retrieves GPA and GRE statistical metrics."""
+    # Q3: Average GPA, GRE
+    safe_execute(cursor, """
+        SELECT ROUND(AVG(gpa)::numeric, 2), ROUND(AVG(gre)::numeric, 1), 
+               ROUND(AVG(gre_v)::numeric, 1), ROUND(AVG(gre_aw)::numeric, 1)
+        FROM applicants 
+        WHERE (gpa IS NOT NULL AND gpa <= 4.0) AND (gre BETWEEN 130 AND 170)
+        AND (gre_v BETWEEN 130 AND 170) AND (gre_aw BETWEEN 0 AND 6.0)
+    """, 1)
+    res = cursor.fetchone()
+    metrics['q3_gpa'] = res[0] if res[0] is not None else 0
+    metrics['q3_gre'] = res[1] if res[1] is not None else 0
+    metrics['q3_grev'] = res[2] if res[2] is not None else 0
+    metrics['q3_greaw'] = res[3] if res[3] is not None else 0
+
+    # Q4 & Q6: GPA of American Students and Acceptances
+    safe_execute(cursor, """
+        SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
+        WHERE term = 'Fall 2026' AND us_or_international = 'American'
+    """, 1)
+    metrics['q4'] = cursor.fetchone()[0] or 0
+
+    safe_execute(cursor, """
+        SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
+        WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%'
+    """, 1)
+    metrics['q6'] = cursor.fetchone()[0] or 0
+
+def get_program_metrics(cursor, metrics):
+    """Retrieves program-specific acceptance metrics and trends."""
+    # Q5: Percent Acceptance Fall 2026
+    safe_execute(cursor, """
+        SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status ILIKE 'Accepted%') 
+        / NULLIF(COUNT(*), 0), 2) FROM applicants WHERE term = 'Fall 2026'
+    """, 1)
+    metrics['q5'] = cursor.fetchone()[0] or 0.00
+
+    # Q7, Q8, Q9: Specific Program Volumes
+    safe_execute(cursor, """
+        SELECT COUNT(*) FROM applicants WHERE llm_generated_university = 'Johns Hopkins University' 
+        AND degree = 'Masters' AND llm_generated_program ILIKE '%Computer Science%'
+    """, 1)
+    metrics['q7'] = cursor.fetchone()[0]
+
+    safe_execute(cursor, """
+        SELECT COUNT(*) FROM applicants 
+        WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
+        AND llm_generated_university IN ('Georgetown University', 'Massachusetts Institute of Technology', 
+        'Stanford University', 'Carnegie Mellon University')
+        AND llm_generated_program ILIKE '%Computer Science%'
+    """, 1)
+    metrics['q8'] = cursor.fetchone()[0]
+
+    safe_execute(cursor, """
+        SELECT COUNT(*) FROM applicants 
+        WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
+        AND program ILIKE '%Computer Science%' AND (program ILIKE '%Georgetown%' 
+        OR program ILIKE '%Massachusetts Institute of Technology%' OR program ILIKE '%MIT%' 
+        OR program ILIKE '%Stanford%' OR program ILIKE '%Carnegie Mellon%')
+    """, 1)
+    metrics['q9_raw'] = cursor.fetchone()[0]
+
+    # Q10 & Q11: Top Programs and Monthly Trends (Notice the limits here)
+    safe_execute(cursor, """
+        SELECT llm_generated_program, COUNT(*) as volume FROM applicants
+        GROUP BY llm_generated_program ORDER BY volume DESC
+    """, 5)
+    metrics['q10'] = cursor.fetchall()
+
+    safe_execute(cursor, """
+        SELECT TO_CHAR(date_added, 'Month') as month_name, COUNT(*) as count 
+        FROM applicants WHERE date_added IS NOT NULL GROUP BY month_name ORDER BY count DESC
+    """, 12)
+    metrics['q11'] = cursor.fetchall()
 
 def get_metrics():
     """
-    Executes analytical SQL queries against the applicants dataset.
-
-    This function runs a comprehensive suite of queries to calculate overall
-    applicant volume, demographic percentages, average standardized test scores, 
-    and acceptance rates. It prints a formatted report directly to the terminal
-    and bundles the raw data into a dictionary for rendering in the web application.
-
-    :returns: A dictionary containing the aggregated metrics for all 11 analytical questions.
-    :rtype: dict
-    :raises Exception: If a database connection fails or a SQL query encounters an error.
+    Coordinates the execution of analytical SQL queries and returns a metrics dictionary.
     """
-    print("Running Assignment Analysis Report...\n")
-    print("-" * 50)
-    
     metrics = {}
-    
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                
-                # Q1: Applied for Fall 2026
-                cur.execute("SELECT COUNT(*) FROM applicants WHERE term = 'Fall 2026';")
-                metrics['q1'] = cur.fetchone()[0]
-                print(f"1. Total entries for Fall 2026: {metrics['q1']}")
-
-                # Q2: Percentage of International Students
-                cur.execute("""
-                    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE us_or_international = 'International') / NULLIF(COUNT(*), 0), 2) 
-                    FROM applicants;
-                """)
-                # Handle case where table is empty (NULLIF prevents div by zero, but returns None)
-                metrics['q2'] = cur.fetchone()[0] or 0.00
-                print(f"2. Percentage of International Students: {metrics['q2']}%")
-
-                # Q3: Average GPA, GRE (Sanitized)
-                cur.execute("""
-                    SELECT ROUND(AVG(gpa)::numeric, 2), ROUND(AVG(gre)::numeric, 1), 
-                           ROUND(AVG(gre_v)::numeric, 1), ROUND(AVG(gre_aw)::numeric, 1)
-                    FROM applicants 
-                    WHERE (gpa IS NOT NULL AND gpa <= 4.0)
-                    AND (gre BETWEEN 130 AND 170)
-                    AND (gre_v BETWEEN 130 AND 170)
-                    AND (gre_aw BETWEEN 0 AND 6.0);
-                """)
-                res = cur.fetchone()
-                # Use fallback 0s if averages are None (e.g. empty table during tests)
-                metrics['q3_gpa'] = res[0] if res[0] is not None else 0
-                metrics['q3_gre'] = res[1] if res[1] is not None else 0
-                metrics['q3_grev'] = res[2] if res[2] is not None else 0
-                metrics['q3_greaw'] = res[3] if res[3] is not None else 0
-                print(f"3. Averages: GPA: {metrics['q3_gpa']}, GRE-Q: {metrics['q3_gre']}, GRE-V: {metrics['q3_grev']}, GRE-AW: {metrics['q3_greaw']}")
-
-                # Q4: Avg GPA of American Students in Fall 2026
-                cur.execute("""
-                    SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
-                    WHERE term = 'Fall 2026' AND us_or_international = 'American';
-                """)
-                metrics['q4'] = cur.fetchone()[0] or 0
-                print(f"4. Avg GPA of American Students (Fall 2026): {metrics['q4']}")
-
-                # Q5: Percent Acceptance Fall 2026
-                cur.execute("""
-                    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status ILIKE 'Accepted%') / NULLIF(COUNT(*), 0), 2)
-                    FROM applicants WHERE term = 'Fall 2026';
-                """)
-                metrics['q5'] = cur.fetchone()[0] or 0.00
-                print(f"5. Acceptance Rate (Fall 2026): {metrics['q5']}%")
-
-                # Q6: Avg GPA of Acceptances Fall 2026
-                cur.execute("""
-                    SELECT ROUND(AVG(gpa)::numeric, 2) FROM applicants 
-                    WHERE term = 'Fall 2026' AND status ILIKE 'Accepted%';
-                """)
-                metrics['q6'] = cur.fetchone()[0] or 0
-                print(f"6. Avg GPA of Acceptances (Fall 2026): {metrics['q6']}")
-
-                # Q7: JHU, Masters, CS
-                cur.execute("""
-                    SELECT COUNT(*) FROM applicants 
-                    WHERE llm_generated_university = 'Johns Hopkins University' 
-                    AND degree = 'Masters' 
-                    AND llm_generated_program ILIKE '%Computer Science%';
-                """)
-                metrics['q7'] = cur.fetchone()[0]
-                print(f"7. JHU Masters in CS applicants: {metrics['q7']}")
-
-                # Q8: Geo, MIT, Stanford, CMU, PhD in CS (Fall 2026)
-                cur.execute("""
-                    SELECT COUNT(*) FROM applicants 
-                    WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
-                    AND llm_generated_university IN ('Georgetown University', 'Massachusetts Institute of Technology', 'Stanford University', 'Carnegie Mellon University')
-                    AND llm_generated_program ILIKE '%Computer Science%';
-                """)
-                metrics['q8'] = cur.fetchone()[0]
-                print(f"8. Accepted PhD CS at Top Schools (Using LLM Fields): {metrics['q8']}")
-
-                # Q9: Comparison using LLM vs Downloaded Raw Text
-                cur.execute("""
-                    SELECT COUNT(*) FROM applicants 
-                    WHERE term ILIKE '%2026%' AND status ILIKE 'Accepted%' AND degree = 'PhD'
-                    AND program ILIKE '%Computer Science%'
-                    AND (program ILIKE '%Georgetown%' 
-                         OR program ILIKE '%Massachusetts Institute of Technology%' 
-                         OR program ILIKE '%MIT%' 
-                         OR program ILIKE '%Stanford%' 
-                         OR program ILIKE '%Carnegie Mellon%');
-                """)
-                metrics['q9_raw'] = cur.fetchone()[0]
-                print("9. Comparison (LLM vs Raw Text):")
-                print(f"   - Acceptances captured using Standardized LLM Fields: {metrics['q8']}")
-                print(f"   - Acceptances captured using Raw User-Input Fields: {metrics['q9_raw']}")
-
-                # --- Additional Question 1: Top 5 Programs by Volume ---
-                cur.execute("""
-                    SELECT llm_generated_program, COUNT(*) as volume
-                    FROM applicants
-                    GROUP BY llm_generated_program
-                    ORDER BY volume DESC
-                    LIMIT 5;
-                """)
-                metrics['q10'] = cur.fetchall()
-                print("\n10. Top 5 Programs by Applicant Volume:")
-                for row in metrics['q10']:
-                    print(f"    - {row[0]}: {row[1]} applications")
-
-                # --- Additional Question 2: Monthly Trends ---
-                cur.execute("""
-                    SELECT 
-                        TO_CHAR(date_added, 'Month') as month_name, 
-                        COUNT(*) as count 
-                    FROM applicants 
-                    WHERE date_added IS NOT NULL
-                    GROUP BY month_name 
-                    ORDER BY count DESC;
-                """)
-                metrics['q11'] = cur.fetchall()
-                print("\n11. Application Volume by Month:")
-                for row in metrics['q11']:
-                    # Defensive check if row is well-formed
-                    if row and row[0]:
-                        print(f"    - {row[0].strip()}: {row[1]} entries")
-                
-                print("-" * 50)
-                print("Report complete.\n")
-
-    except Exception as e:
-        print(f"An error occurred in get_metrics: {e}")
-        # Re-raise so testing framework knows it failed
+                get_demographic_metrics(cur, metrics)
+                get_academic_metrics(cur, metrics)
+                get_program_metrics(cur, metrics)
+    except psycopg.Error as e:
+        print(f"Database error occurred: {e}")
         raise e
         
     return metrics
 
 if __name__ == "__main__":
-    get_metrics()
+    print(get_metrics())
