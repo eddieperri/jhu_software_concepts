@@ -36,7 +36,7 @@ jobs:
     - name: 3. Snyk Security Scan
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-    continue-on-error: true
+      continue-on-error: true
       run: |
         npm install -g snyk
         snyk test
