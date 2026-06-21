@@ -24,7 +24,7 @@ def get_db_connection():
     test_db_url = os.environ.get("DATABASE_URL")
     if test_db_url:
         return psycopg.connect(conninfo=test_db_url)
-        
+
     # 2. Otherwise, connect to the real local database
     return psycopg.connect(
         host=os.getenv("DB_HOST", "localhost"),

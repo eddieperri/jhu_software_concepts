@@ -45,7 +45,7 @@ jobs:
       run: pylint src/ --fail-under=10
 
     - name: 2. Generate Dependency Graph
-      run: pydeps src/flask_app.py --noshow -T svg -o dependency.svg
+      run: pydeps src/ --noshow -T svg -o dependency.svg
 
     - name: 3. Snyk Security Scan
       env:

@@ -49,4 +49,6 @@ pylint src/
 ## Snyk
 Dependencies can be scanned for vulnerabilities using:
 snyk test
-snyk-win test  
+snyk-win test
+snyke code test
+snyk-win code test
