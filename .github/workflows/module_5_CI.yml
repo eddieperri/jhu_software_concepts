@@ -45,7 +45,9 @@ jobs:
       run: pylint src/ --fail-under=10
 
     - name: 2. Generate Dependency Graph
-      run: pydeps src/ --noshow -T svg -o dependency.svg
+      run: |
+        pydeps src/ --noshow -T svg -o dependency.svg
+        test -f dependency.svg || { echo "dependency.svg was not created!"; exit 1; }
 
     - name: 3. Snyk Security Scan
       env:

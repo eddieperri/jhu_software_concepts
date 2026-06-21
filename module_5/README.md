@@ -43,12 +43,9 @@ python src/flask_app.py
 Navigate to http://127.0.0.1:5000/analysis in your browser.
 
 ## Pylint
-To verify the linting score, run:
+To verify the linting score, from inside the module_5 folder, run:
 pylint src/
 
 ## Snyk
-Dependencies can be scanned for vulnerabilities using:
-snyk test
-snyk-win test
-snyke code test
-snyk-win code test
+We use `snyk test` to scan `requirements.txt` against vulnerability databases to ensure no compromised third-party libraries are introduced.
+We could use `snyk code test` to scan our custom Python source code for insecure practices (like hardcoded secrets or SQL injection vulnerabilities). This code has not been tested using such a service.

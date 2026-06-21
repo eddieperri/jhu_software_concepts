@@ -33,7 +33,7 @@ def get_db_connection():
 def safe_execute(cursor, query_string, limit_val=100):
     """
     Utility function to securely clamp limits and execute composed SQL.
-    Enforces Step 2 Rubric limits: clamps requested limit between 1 and 100.
+    Clamps requested limit between 1 and 100.
     """
     clamped_limit = max(1, min(int(limit_val), 100))
     composed_query = sql.SQL(query_string + " LIMIT {limit};").format(
