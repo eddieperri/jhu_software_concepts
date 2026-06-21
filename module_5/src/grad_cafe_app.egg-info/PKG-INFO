@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: grad_cafe_app
+Version: 0.1.0
+Summary: Hardened Flask and PostgreSQL web application ecosystem.
+Requires-Python: >=3.9
+Dynamic: requires-python
+Dynamic: summary

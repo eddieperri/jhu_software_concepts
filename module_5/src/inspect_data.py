@@ -1,3 +1,4 @@
+"""Utility script for inspecting raw scraped data."""
 import json
 
 def inspect_data(filepath):
@@ -15,16 +16,17 @@ def inspect_data(filepath):
     for i, row in enumerate(data):
         # Attempt to cast uGPA to float; default to 0 if key is missing or null
         gpa = float(row.get("uGPA", 0)) if row.get("uGPA") else 0
-        
+
         # Check for impossible values
         if gpa > 4.0:
             print(f"Suspicious GPA found at record {i}: {gpa} (Program: {row.get('program')})")
-            
+
         # Validate GRE Quant scores (Standard range is 130-170)
         # Assuming we are checking the "GRE Quant" key from the scraper output
         gre_q = float(row.get("GRE Quant", 0)) if row.get("GRE Quant") else 0
         if gre_q > 170:
-            print(f"Suspicious GRE Quant found at record {i}: {gre_q} (Program: {row.get('program')})")
+            print("Suspicious GRE Quant found at record"
+                  f" {i}: {gre_q} (Program: {row.get('program')})")
 
 if __name__ == "__main__":
     # Point to the subfolder where your JSON lives

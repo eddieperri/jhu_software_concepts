@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 Module for sanitizing and loading applicant JSON datasets into PostgreSQL.
 Enforces safe SQL composition and least-privilege database connectivity.
@@ -41,12 +42,51 @@ def clean_numeric(val, min_val, max_val):
     except (ValueError, TypeError):
         return None
 
+def process_single_row(row, cursor, insert_stmt):
+    """
+    Extracts, sanitizes, and safely inserts a single JSON row into the database.
+    Abstracted to reduce local variable count in the main load loop.
+    """
+    url = row.get("result url")
+    if not url:
+        return
+
+    gpa = clean_numeric(row.get("uGPA"), 0.0, 4.0)
+    gre_q = clean_numeric(row.get("GRE Quant"), 130, 170)
+    gre_v = clean_numeric(row.get("GRE Verbal"), 130, 170)
+    gre_aw = clean_numeric(row.get("GRE AW"), 0.0, 6.0)
+
+    raw_date = row.get("date added")
+    clean_date = None
+    if raw_date:
+        try:
+            date_str = raw_date.replace("Added on ", "")
+            clean_date = datetime.strptime(date_str, "%b %d, %Y").date()
+        except ValueError:
+            clean_date = None
+
+    cursor.execute(insert_stmt, (
+        row.get("program", "Unknown Program"),
+        row.get("comments"),
+        clean_date,
+        url,
+        row.get("status", "Unknown Status"),
+        row.get("term", "Unknown Term"),
+        row.get("I/International"),
+        gpa,
+        gre_q,
+        gre_v,
+        gre_aw,
+        row.get("Degree"),
+        row.get("llm-generated-program"),
+        row.get("llm-generated-university")
+    ))
+
 def load_data(json_path=None):
     """
     Loads the standardized applicant JSON dataset into PostgreSQL.
     Uses safe psycopg composition and handles relative/absolute paths.
     """
-    # Dynamically resolve absolute path to avoid subprocess FileNotFoundError
     if json_path is None:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         json_path = os.path.join(base_dir, "web_scraping", "applicant_data.json")
@@ -64,7 +104,8 @@ def load_data(json_path=None):
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # 2. Build secure composition topology for data ingestion
+                # Build secure composition topology for data ingestion
+                # Keeps out 'Little Bobby Tables' and other SQL injection attempts
                 insert_query = sql.SQL("""
                     INSERT INTO {table} (
                         program, comments, date_added, url, status, term,
@@ -74,42 +115,9 @@ def load_data(json_path=None):
                     ON CONFLICT (url) DO NOTHING;
                 """).format(table=sql.Identifier('applicants'))
 
-                # 3. Execute bounded insertion
+                # Execute bounded insertion
                 for row in data:
-                    gpa = clean_numeric(row.get("uGPA"), 0.0, 4.0)
-                    gre_q = clean_numeric(row.get("GRE Quant"), 130, 170)
-                    gre_v = clean_numeric(row.get("GRE Verbal"), 130, 170)
-                    gre_aw = clean_numeric(row.get("GRE AW"), 0.0, 6.0)
-
-                    raw_date = row.get("date added")
-                    clean_date = None
-                    if raw_date:
-                        try:
-                            date_str = raw_date.replace("Added on ", "")
-                            clean_date = datetime.strptime(date_str, "%b %d, %Y").date()
-                        except ValueError:
-                            clean_date = None
-
-                    url = row.get("result url")
-                    if not url:
-                        continue
-
-                    cur.execute(insert_query, (
-                        row.get("program", "Unknown Program"),
-                        row.get("comments"),
-                        clean_date,
-                        url,
-                        row.get("status", "Unknown Status"),
-                        row.get("term", "Unknown Term"),
-                        row.get("I/International"),
-                        gpa,
-                        gre_q,
-                        gre_v,
-                        gre_aw,
-                        row.get("Degree"),
-                        row.get("llm-generated-program"),
-                        row.get("llm-generated-university")
-                    ))
+                    process_single_row(row, cur, insert_query)
 
                 conn.commit()
                 print("Migration complete! Data sanitized and loaded.")

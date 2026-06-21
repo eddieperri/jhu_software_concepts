@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 Module for querying analytical metrics from the Grad Cafe PostgreSQL database.
 Enforces safe SQL composition, inherent row limits, and least-privilege connectivity.
@@ -136,7 +137,7 @@ def get_metrics():
     except psycopg.Error as e:
         print(f"Database error occurred: {e}")
         raise e
-        
+
     return metrics
 
 if __name__ == "__main__":

@@ -1,0 +1,53 @@
+(venv) PS C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_5> snyk-win test
+
+Testing C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_5...
+
+Tested 74 dependencies for known issues, found 9 issues, 26 vulnerable paths.
+
+
+Issues to fix by upgrading dependencies:
+
+  Upgrade python-dotenv@1.2.1 to python-dotenv@1.2.2 to fix
+  ✗ Symlink Attack [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-PYTHONDOTENV-16115271] in python-dotenv@1.2.1
+    introduced by python-dotenv@1.2.1
+
+  Upgrade requests@2.31.0 to requests@2.33.0 to fix
+  ✗ Insertion of Sensitive Information Into Sent Data [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-REQUESTS-10305723] in requests@2.31.0
+    introduced by requests@2.31.0 and 3 other path(s)
+  ✗ Insecure Temporary File [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-REQUESTS-15763443] in requests@2.31.0
+    introduced by requests@2.31.0 and 3 other path(s)
+  ✗ Always-Incorrect Control Flow Implementation [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-REQUESTS-6928867] in requests@2.31.0
+    introduced by requests@2.31.0 and 3 other path(s)
+
+  Pin filelock@3.19.1 to filelock@3.20.3 to fix
+  ✗ Time-of-check Time-of-use (TOCTOU) Race Condition [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-FILELOCK-14458335] in filelock@3.19.1
+    introduced by huggingface-hub@1.8.0 > filelock@3.19.1
+  ✗ Symlink Attack [Medium Severity][https://security.snyk.io/vuln/SNYK-PYTHON-FILELOCK-14912448] in filelock@3.19.1
+    introduced by huggingface-hub@1.8.0 > filelock@3.19.1
+
+  Pin urllib3@2.6.3 to urllib3@2.7.0 to fix
+  ✗ Insertion of Sensitive Information Into Sent Data [High Severity][https://security.snyk.io/vuln/SNYK-PYTHON-URLLIB3-16642024] in urllib3@2.6.3
+    introduced by requests@2.31.0 > urllib3@2.6.3 and 4 other path(s)
+  ✗ Decompression Bomb [High Severity][https://security.snyk.io/vuln/SNYK-PYTHON-URLLIB3-16642059] in urllib3@2.6.3
+    introduced by requests@2.31.0 > urllib3@2.6.3 and 4 other path(s)
+
+
+Issues with no direct upgrade or patch:
+  ✗ Deserialization of Untrusted Data [High Severity][https://security.snyk.io/vuln/SNYK-PYTHON-DISKCACHE-15268422] in diskcache@5.6.3
+    introduced by llama-cpp-python@0.2.90 > diskcache@5.6.3
+  No upgrade or patch available
+
+
+
+Organization:      eddieperri
+Package manager:   pip
+Target file:       requirements.txt
+Project name:      module_5
+Open source:       no
+Project path:      C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_5
+Licenses:          enabled
+
+Tip: Detected multiple supported manifests (1), use --all-projects to scan all of them at once.
+
+
+(venv) PS C:\Users\eddie\source\repos\JHU\jhu_software_concepts\module_5> 
