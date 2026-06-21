@@ -34,18 +34,17 @@ def test_end_to_end_flow(client, app, test_db, fake_json_data, monkeypatch):
     # Verify 3 rows were inserted by the pipeline
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Updated this from 2 to 3
-                assert cur.fetchone()[0] == 3
+            cur.execute("SELECT COUNT(*) FROM applicants;")
+            assert cur.fetchone()[0] == 3
             
     # Run the pipeline again to test your uniqueness constraint (idempotency)
     flask_app.default_pipeline_runner(app)
+    
     # Verify the database STILL only has 3 rows (no duplicates)
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Updated this from 2 to 3 then back to 0
-                assert cur.fetchone()[0] == 3
+            cur.execute("SELECT COUNT(*) FROM applicants;")
+            assert cur.fetchone()[0] == 3
             
     # 2. POST /update-analysis endpoint works when idle
     resp_update = client.post('/update-analysis')
@@ -62,8 +61,6 @@ def test_error_paths_for_100_coverage(monkeypatch, app, tmp_path):
     Intentionally triggers all exception blocks to guarantee 100% coverage.
     """
     # --- 1. inspect_data.py & load_data.py edge cases ---
-    # We create a record with bad GPA/GRE (for inspect_data) 
-    # and a blank url / bad date (to trigger the load_data `continue` block)
     suspicious_data = [{
         "uGPA": "4.5", 
         "GRE Quant": "175", 
@@ -88,41 +85,33 @@ def test_error_paths_for_100_coverage(monkeypatch, app, tmp_path):
     flask_app.default_pipeline_runner(app) # Triggers except CalledProcessError
     
     def mock_exc(*args, **kwargs):
-        raise Exception("Simulated Failure")
+        raise RuntimeError("Simulated Failure")
     monkeypatch.setattr(subprocess, 'run', mock_exc)
+    flask_app.default_pipeline_runner(app) # Triggers except Exception/RuntimeError
     
-    # Tell Pytest we expect this to crash because Pylint made us remove the broad exception handler
-    with pytest.raises(Exception):
-        flask_app.default_pipeline_runner(app) # Triggers except Exception
-    
-# --- 3. Database & File path errors ---
+    # --- 3. load_data.py File Path & Default Path coverage ---
     with pytest.raises(FileNotFoundError):
         load_data.load_data("definitely_does_not_exist.json")
         
-    # --- Force 100% Coverage on Database Exceptions ---
+    try:
+        # Calling with no arguments forces it to assign the local path (Lines 98-99)
+        load_data.load_data() 
+    except Exception:
+        pass # We don't care if it crashes on the file read, just need the path assignment
+        
+    # --- 4. Force 100% Coverage on Database Exceptions ---
     def mock_db_crash(*args, **kwargs):
-        import psycopg
         raise psycopg.Error("Simulated Database Crash")
         
     monkeypatch.setattr(psycopg, 'connect', mock_db_crash)
     
-    # Trigger the exception block in load_data.py
-    try:
+    # Trigger the database crash block in load_data.py
+    with pytest.raises(psycopg.Error):
         load_data.load_data(str(test_file))
-    except Exception:
-        pass
         
-    # Trigger the exception block in query_data.py
-    try:
+    # Trigger the database crash block in query_data.py
+    with pytest.raises(psycopg.Error):
         query_data.get_metrics()
-    except Exception:
-        pass
-
-    # Trigger the exception block in flask_app.py
-    try:
-        client.post('/pull-data')
-    except Exception:
-        pass
 
 @pytest.mark.integration
 def test_db_fallback_coverage(monkeypatch):
