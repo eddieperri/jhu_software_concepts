@@ -105,6 +105,6 @@ def create_app(test_config=None, pipeline_runner=None):
 
     return flask_app
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     main_app = create_app()
     main_app.run(debug=True)

@@ -12,8 +12,16 @@ load_dotenv()
 
 def get_db_connection():
     """
-    Establishes a connection to the database using least-privilege environment definitions.
+    Establishes and returns a connection to the PostgreSQL database.
+    Prioritizes an explicit DATABASE_URL (for testing/CI) before falling 
+    back to local least-privilege environment variables.
     """
+    # 1. Check if Pytest or GitHub Actions handed us a temporary test database
+    test_db_url = os.environ.get("DATABASE_URL")
+    if test_db_url:
+        return psycopg.connect(conninfo=test_db_url)
+        
+    # 2. Otherwise, connect to the real local database
     return psycopg.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", "5432"),
@@ -140,5 +148,5 @@ def get_metrics():
 
     return metrics
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     print(get_metrics())

@@ -30,8 +30,8 @@ def test_load_data_and_constraints(test_db, fake_json_data):
     with psycopg.connect(conninfo=test_db) as conn:
         with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM applicants;")
-                # Updated this from 2 to 3
-                assert cur.fetchone()[0] == 3 
+
+                assert cur.fetchone()[0] == 3
 
         # 4. Test idempotency (run it again!)
     load_data.load_data(fake_json_data)
