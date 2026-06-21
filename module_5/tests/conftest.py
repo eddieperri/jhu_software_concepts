@@ -144,14 +144,13 @@ def test_db():
     """
     load_dotenv()
     
-    # 1. Detect if we are running in GitHub Actions
+# 1. Detect if we are running in GitHub Actions
     if os.environ.get("GITHUB_ACTIONS") == "true":
-        # CI Environment: Use the default password defined in our tests.yml
+            # CI Environment: Use the default password defined in our tests.yml
         db_url = "postgresql://postgres:password@localhost:5432/postgres"
     else:
-        # Local Environment: Use your secure .env password
-        db_password = os.environ.get("DB_PASSWORD", "")
-        db_url = f"postgresql://postgres:{db_password}@localhost:5432/postgres"
+            # Local Environment: Stop using the .env password for the postgres admin
+        db_url = "postgresql://postgres:1234@localhost:5432/postgres"
     
     # 2. Set the environment variable so all source code uses it
     os.environ['DATABASE_URL'] = db_url

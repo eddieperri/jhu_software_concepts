@@ -90,7 +90,10 @@ def test_error_paths_for_100_coverage(monkeypatch, app, tmp_path):
     def mock_exc(*args, **kwargs):
         raise Exception("Simulated Failure")
     monkeypatch.setattr(subprocess, 'run', mock_exc)
-    flask_app.default_pipeline_runner(app) # Triggers except Exception
+    
+    # Tell Pytest we expect this to crash because Pylint made us remove the broad exception handler
+    with pytest.raises(Exception):
+        flask_app.default_pipeline_runner(app) # Triggers except Exception
     
     # --- 3. Database & File path errors ---
     with pytest.raises(FileNotFoundError):
