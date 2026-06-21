@@ -1,0 +1,33 @@
+name: Module 5 CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    # IMPORTANT: We define the working directory here 
+    # so every command runs inside module_5 automatically
+    defaults:
+      run:
+        working-directory: ./module_5
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+
+    - name: Run Tests
+      run: pytest
+      
+    - name: Run Pylint
+      run: pylint src/ --fail-under=10
