@@ -43,6 +43,11 @@ def create_app(test_config=None):
         except Exception as e: # pylint: disable=broad-exception-caught
             return jsonify({"error": str(e)}), 503
 
+    @flask_app.route('/status', methods=['GET'])
+    def status():
+        """Returns a lightweight status object for frontend polling."""
+        return jsonify({"is_scraping": False})
+
     return flask_app
 
 if __name__ == '__main__':

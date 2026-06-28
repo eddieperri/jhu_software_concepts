@@ -134,6 +134,13 @@ def load_data(json_path=None):
                     VALUES ('gradcafe_scraper', '') 
                     ON CONFLICT DO NOTHING;
                 """)
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS analytics_cache (
+                        name TEXT PRIMARY KEY,
+                        payload JSONB NOT NULL,
+                        updated_at TIMESTAMPTZ DEFAULT now()
+                    );
+                """)
 
                 # Build secure composition topology for data ingestion
                 insert_query = sql.SQL("""

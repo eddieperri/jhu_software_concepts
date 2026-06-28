@@ -37,7 +37,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./src/worker/etl:/app/worker/etl:ro # <--- Gives web access to query_data.py
+      - ./src/worker:/app/worker:ro # <--- Gives web access to the worker ETL modules
     depends_on:
       rabbitmq:
         condition: service_healthy

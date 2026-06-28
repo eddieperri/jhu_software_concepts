@@ -1,13 +1,42 @@
-# Grad Cafe Analytics Dashboard
+# Grad Cafe Analytics Dashboard (Module 6)
 
-An automated, test-driven ETL pipeline and web dashboard for analyzing graduate school admissions data. 
+A containerized microservice version of the Grad Cafe dashboard. The stack includes a Flask web service, a background worker, RabbitMQ, and PostgreSQL orchestrated with Docker Compose.
 
-## Documentation
-[**View the Full Sphinx Documentation on Read the Docs**](https://jhu-software-concepts-eddieperri.readthedocs.io)
+## Architecture
 
-## Fresh Installation & Reproducibility
+- `web`: Flask application that renders analytics and publishes tasks to RabbitMQ.
+- `worker`: Background consumer that executes `scrape_new_data` and `recompute_analytics` tasks.
+- `db`: PostgreSQL database with persistent named volume storage.
+- `rabbitmq`: Message broker with the management UI exposed on port `15672`.
 
-To guarantee a clean environment that perfectly mirrors the development state, this project enforces strict dependency tracking. You can install the environment using either standard `pip` or the lightning-fast `uv` package manager.
+## Run Instructions
+
+From the `module_6` directory:
+
+```powershell
+docker compose up --build
+```
+
+Then visit:
+
+- `http://localhost:8080` for the Flask UI
+- `http://localhost:15672` for RabbitMQ management (`guest` / `guest`)
+
+Click **Pull Data** to enqueue a scrape task and **Update Analysis** to enqueue analytics recompute.
+
+## Environment Variables
+
+The stack configures these values automatically inside the containers:
+
+- `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/`
+- `DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres`
+- `PYTHONUNBUFFERED=1`
+
+## Notes
+
+- The worker mounts `src/data` read-only for safe ingestion.
+- The stack uses a named volume `pgdata` to persist Postgres data.
+- Both web and worker containers run as non-root user `1000`.
 
 ### Option A: Standard pip Installation
 1. Create a standard Python virtual environment:

@@ -277,8 +277,8 @@
         updateBtn.addEventListener('click', async () => {
             try {
                 const response = await fetch('/update-analysis', { method: 'POST' });
-                if (response.status === 200) {
-                    window.location.reload();
+                if (response.status === 202) {
+                    alert("Analytics recompute has been queued.");
                 } else if (response.status === 409) {
                     alert("Cannot update analysis. The scraper is currently writing to the database.");
                 }

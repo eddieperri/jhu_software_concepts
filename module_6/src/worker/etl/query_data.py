@@ -134,14 +134,29 @@ def get_program_metrics(cursor, metrics):
 def get_metrics():
     """
     Coordinates the execution of analytical SQL queries and returns a metrics dictionary.
+    Uses cached analytics if available for faster UI reads.
     """
     metrics = {}
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                get_demographic_metrics(cur, metrics)
-                get_academic_metrics(cur, metrics)
-                get_program_metrics(cur, metrics)
+                try:
+                    cur.execute("SELECT payload FROM analytics_cache WHERE name = 'default'")
+                    row = cur.fetchone()
+                except psycopg.errors.UndefinedTable:
+                    row = None
+
+                if row is not None:
+                    raw_payload = row[0]
+                    if isinstance(raw_payload, dict):
+                        metrics = raw_payload
+                    else:
+                        import json as _json
+                        metrics = _json.loads(raw_payload)
+                else:
+                    get_demographic_metrics(cur, metrics)
+                    get_academic_metrics(cur, metrics)
+                    get_program_metrics(cur, metrics)
     except psycopg.Error as e:
         print(f"Database error occurred: {e}")
         raise e

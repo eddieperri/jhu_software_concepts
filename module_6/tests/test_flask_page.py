@@ -57,3 +57,11 @@ def test_home_redirect(client):
     response = client.get('/')
     assert response.status_code == 302
     assert '/analysis' in response.location
+
+
+@pytest.mark.web
+def test_status_endpoint(client):
+    """Verify the lightweight status endpoint returns a JSON object."""
+    response = client.get('/status')
+    assert response.status_code == 200
+    assert response.json == {"is_scraping": False}
