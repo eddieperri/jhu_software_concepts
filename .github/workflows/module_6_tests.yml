@@ -43,12 +43,16 @@ jobs:
         working-directory: ./module_6
         run: |
           python -m pip install --upgrade pip
+          # Ensure pip installs requirements found in the current directory
           pip install -r requirements.txt
+          # Explicitly install the dependencies that are failing
+          pip install pika psycopg flask selenium
 
       - name: Run Pylint (Targeting 10.00/10)
+        working-directory: ./module_6
         run: |
-          cd module_6
-          pylint src/web/run.py src/web/publisher.py src/worker/consumer.py src/db/load_data.py
+          # Use the same command that worked on your local machine
+          python -m pylint src/web src/worker src/db
 
       - name: Run Pytest (Targeting 100% Coverage)
         env:
