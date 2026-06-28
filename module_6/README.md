@@ -1,80 +1,59 @@
-# Grad Cafe Analytics Dashboard (Module 6)
+## Module 6
 
-A containerized microservice version of the Grad Cafe dashboard. The stack includes a Flask web service, a background worker, RabbitMQ, and PostgreSQL orchestrated with Docker Compose.
+This README explains how to build, run, and verify the Grad Cafe Analytics stack (Flask web, RabbitMQ, background worker, Postgres) using Docker Compose.
 
-## Architecture
+Prerequisites
+- Docker and Docker Compose available on your machine (Compose v2 or later recommended).
+- Optional: Python 3.11 if you want to run services locally without containers.
 
-- `web`: Flask application that renders analytics and publishes tasks to RabbitMQ.
-- `worker`: Background consumer that executes `scrape_new_data` and `recompute_analytics` tasks.
-- `db`: PostgreSQL database with persistent named volume storage.
-- `rabbitmq`: Message broker with the management UI exposed on port `15672`.
+Key files
+- `docker-compose.yml`: Compose orchestration for `db`, `rabbitmq`, `web`, and `worker`.
+- `src/web/Dockerfile` and `src/worker/Dockerfile`: service images.
+- `src/web/run.py`: Flask app entrypoint and routes.
+- `src/worker/consumer.py`: RabbitMQ consumer and task handlers.
 
-## Run Instructions
+Ports and Endpoints
+- `8080` → Flask UI (analysis dashboard). Click **Pull Data** to queue a `scrape_new_data` task and **Update Analysis** to queue `recompute_analytics`.
+- `15672` → RabbitMQ management UI (guest/guest).
+- `5432` → PostgreSQL (mapped for local debugging).
 
-From the `module_6` directory:
+Environment variables (used in Compose)
+- `RABBITMQ_URL` — AMQP URL used by `web` and `worker` (default: `amqp://guest:guest@rabbitmq:5672/`).
+- `DATABASE_URL` — Postgres connection used by services (default: `postgresql://postgres:postgres@db:5432/postgres`).
+- `PYTHONUNBUFFERED=1` — ensures Python logs are flushed immediately.
+- For local non-container runs prefer using a `.env` file with `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
 
-```powershell
+Build and run (Docker Compose)
+1. From `module_6` run:
+```bash
 docker compose up --build
 ```
+2. Wait for `db` and `rabbitmq` to become healthy (Compose healthchecks are configured).
+3. Visit `http://localhost:8080` and use the UI buttons to enqueue tasks.
 
-Then visit:
+Useful Docker commands
+```bash
+docker compose build --no-cache web worker
+docker compose up -d
+docker compose logs -f web
+docker compose exec web python -m pylint src/
+```
 
-- `http://localhost:8080` for the Flask UI
-- `http://localhost:15672` for RabbitMQ management (`guest` / `guest`)
+Notes on dependencies
+- Each service uses its own `requirements.txt` (see `src/web/requirements.txt` and `src/worker/requirements.txt`). This is intentional — images are built per-service.
+- The project requires `psycopg[binary]` so that code importing `psycopg` works within the slim Python image. If you see `ModuleNotFoundError: No module named 'psycopg'`, ensure `psycopg[binary]` is installed in the service image.
 
-Click **Pull Data** to enqueue a scrape task and **Update Analysis** to enqueue analytics recompute.
+Architecture and verification (what to check)
+- Compose services:
+   - `db` (Postgres) persists data in named volume `pgdata`.
+   - `rabbitmq` provides message broker and management UI.
+   - `web` publishes tasks to the `tasks` exchange (via `publisher.publish_task`).
+   - `worker` consumes from the queue and runs two handlers: `scrape_new_data` (runs the scraper and inserts new rows) and `recompute_analytics` (recomputes and caches analytics in `analytics_cache`).
+- Message flow: `web` publishes JSON messages with `kind` and `payload` to the `tasks` exchange. `worker` binds a durable queue and processes messages, acking on success and nack/rejecting on failure.
 
-## Environment Variables
-
-The stack configures these values automatically inside the containers:
-
-- `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/`
-- `DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres`
-- `PYTHONUNBUFFERED=1`
-
-## Notes
-
-- The worker mounts `src/data` read-only for safe ingestion.
-- The stack uses a named volume `pgdata` to persist Postgres data.
-- Both web and worker containers run as non-root user `1000`.
-
-### Option A: Standard pip Installation
-1. Create a standard Python virtual environment:
-   `python -m venv venv`
-2. Activate the environment:
-   - Windows: `venv\Scripts\activate`
-   - Mac/Linux: `source venv/bin/activate`
-3. Install the frozen dependencies and the local package in editable mode:
-   `pip install -r requirements.txt`
-   `pip install -e .`
-
-### Option B: High-Speed uv Installation
-1. Create a virtual environment using uv:
-   `uv venv`
-2. Activate the environment (same as above).
-3. Sync the exact environment state and install the local package:
-   `uv pip sync requirements.txt`
-   `uv pip install -e .`
-
-## Database Configuration (Least Privilege)
-This application enforces strict database security. It does not use the default PostgreSQL superuser.
-Create a `.env` file in the root directory (use `.env.example` as a template) and provide your credentials:
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=thegradcafe
-DB_USER=grad_app_user
-DB_PASSWORD=your_secure_password
-
-
-## Running the App
-python src/flask_app.py
-Navigate to http://127.0.0.1:5000/analysis in your browser.
-
-## Pylint
-To verify the linting score, from inside the module_5 folder, run:
-pylint src/
-
-## Snyk
-We use `snyk test` to scan `requirements.txt` against vulnerability databases to ensure no compromised third-party libraries are introduced.
-We could use `snyk code test` to scan our custom Python source code for insecure practices (like hardcoded secrets or SQL injection vulnerabilities). This code has not been tested using such a service.
+Verification steps
+1. Start Compose and confirm services are healthy:
+    - `docker compose ps` and `docker compose logs db rabbitmq`.
+2. Open RabbitMQ UI at `http://localhost:15672` and inspect exchanges/queues.
+3. Open the Flask UI at `http://localhost:8080` and click **Pull Data** → check worker logs for a received `scrape_new_data` task.
+4. After a scrape completes, confirm rows in Postgres via `docker compose exec db psql -U postgres -c "select count(*) from applicants;"`.
