@@ -1,0 +1,7 @@
+[report]
+exclude_lines =
+    if __name__ == .__main__.:
+[run]
+omit =
+    src/worker/etl/incremental_scraper.py
+    src/worker/etl/clean.py

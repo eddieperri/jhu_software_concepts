@@ -1,0 +1,52 @@
+# =========================
+# Virtual Environments
+# =========================
+venv/
+env/
+
+# =========================
+# Secrets & Configuration
+# =========================
+.env
+
+# =========================
+# Python Cache & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Python Packaging
+# =========================
+*.egg-info/
+build/
+dist/
+
+# =========================
+# Testing & Coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# =========================
+# Sphinx Documentation
+# =========================
+docs/build/
+docs/_build/
+
+# =========================
+# Custom / Local Tools
+# =========================
+module_4/reset_db.py
+reset_db.py
+
+# =========================
+# Local LLM Weights
+# =========================
+src/web_scraping/llm_hosting/models/
+
+# Project-specific exclusions 
+# Note: Do NOT ignore dependency.svg, snyk-analysis.png, or coverage_summary.txt

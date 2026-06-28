@@ -35,3 +35,10 @@ docs/_build/
 # =========================
 module_4/reset_db.py
 reset_db.py
+
+# =========================
+# IDEs & Large Model Files
+# =========================
+.vscode/
+.idea/
+*.gguf

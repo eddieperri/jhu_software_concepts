@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports: 
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # Consumer/Producer port
+      - "15672:15672" # Management UI port
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: ./src/web
+    ports:
+      - "8080:8080"
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DATABASE_URL=postgresql://postgres@db:5432/postgres
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./src/worker/etl:/app/worker/etl:ro # <--- Gives web access to query_data.py
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  worker:
+    build: ./src/worker
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DATABASE_URL=postgresql://postgres@db:5432/postgres
+      - HOME=/tmp
+      - PYTHONUNBUFFERED=1  # <--- Forces Python to print logs instantly
+    volumes:
+      - ./src/data:/app/data:ro 
+      - ./src/db:/app/db:ro 
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
