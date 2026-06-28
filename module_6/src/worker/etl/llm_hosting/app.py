@@ -8,12 +8,21 @@ import os
 import re
 import sys
 import difflib
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
 from flask import Flask, jsonify, request
-from huggingface_hub import hf_hub_download
-from llama_cpp import Llama  # CPU-only by default if N_GPU_LAYERS=0
+
+# Optional heavy ML dependencies: guard imports so the module still loads when
+# the packages are not present (e.g. in lightweight test images).
+try:
+    from huggingface_hub import hf_hub_download
+except ImportError:  # pragma: no cover - optional runtime dependency
+    hf_hub_download = None
+
+try:
+    from llama_cpp import Llama  # CPU-only by default if N_GPU_LAYERS=0
+except ImportError:  # pragma: no cover - optional runtime dependency
+    Llama = None
 
 app = Flask(__name__)
 
@@ -111,14 +120,14 @@ FEW_SHOTS: List[Tuple[Dict[str, str], Dict[str, str]]] = [
     ),
 ]
 
-_LLM: Llama | None = None
-
-
 def _load_llm() -> Llama:
-    """Download (or reuse) the GGUF file and initialize llama.cpp."""
-    global _LLM
-    if _LLM is not None:
-        return _LLM
+    """Download (or reuse) the GGUF file and initialize llama.cpp.
+
+    Uses a function attribute to cache the model instance and avoid a
+    module-level global statement.
+    """
+    if getattr(_load_llm, "llm_instance", None) is not None:
+        return _load_llm.llm_instance
 
     model_path = hf_hub_download(
         repo_id=MODEL_REPO,
@@ -128,14 +137,14 @@ def _load_llm() -> Llama:
         force_filename=MODEL_FILE,
     )
 
-    _LLM = Llama(
+    _load_llm.llm_instance = Llama(
         model_path=model_path,
         n_ctx=N_CTX,
         n_threads=N_THREADS,
         n_gpu_layers=N_GPU_LAYERS,
         verbose=False,
     )
-    return _LLM
+    return _load_llm.llm_instance
 
 
 def _split_fallback(text: str) -> Tuple[str, str]:
@@ -241,7 +250,7 @@ def _call_llm(program_text: str) -> Dict[str, str]:
         obj = json.loads(match.group(0) if match else text)
         std_prog = str(obj.get("standardized_program", "")).strip()
         std_uni = str(obj.get("standardized_university", "")).strip()
-    except Exception:
+    except (AttributeError, ValueError, json.JSONDecodeError):
         std_prog, std_uni = _split_fallback(program_text)
 
     std_prog = _post_normalize_program(std_prog)
@@ -300,31 +309,29 @@ def _cli_process_file(
     """Process a JSON file and write JSONL sequentially."""
     with open(in_path, "r", encoding="utf-8") as f:
         rows = _normalize_input(json.load(f))
-
-    sink = sys.stdout if to_stdout else None
-    if not to_stdout:
-        out_path = out_path or (in_path + ".jsonl")
-        mode = "a" if append else "w"
-        sink = open(out_path, mode, encoding="utf-8")
-
-    assert sink is not None 
-
-    try:
+    if to_stdout:
+        sink = sys.stdout
+        # Write directly to stdout; no separate context manager required
         print(f"Starting sequential LLM processing for {len(rows)} records...")
-        
         for idx, row in enumerate(rows, 1):
             completed_row = process_single_row(row)
             json.dump(completed_row, sink, ensure_ascii=False)
             sink.write("\n")
-            sink.flush() # Forces the hard drive to update immediately
-            
-            # Print a progress update every 100 records so you KNOW it isn't frozen
+            sink.flush()
             if idx % 100 == 0:
                 print(f"  -> Processed {idx} / {len(rows)} records...")
-                
-    finally:
-        if sink is not sys.stdout:
-            sink.close()
+    else:
+        out_path = out_path or (in_path + ".jsonl")
+        mode = "a" if append else "w"
+        with open(out_path, mode, encoding="utf-8") as sink:
+            print(f"Starting sequential LLM processing for {len(rows)} records...")
+            for idx, row in enumerate(rows, 1):
+                completed_row = process_single_row(row)
+                json.dump(completed_row, sink, ensure_ascii=False)
+                sink.write("\n")
+                sink.flush()
+                if idx % 100 == 0:
+                    print(f"  -> Processed {idx} / {len(rows)} records...")
 
 
 if __name__ == "__main__":

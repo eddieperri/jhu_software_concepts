@@ -1,9 +1,10 @@
 # pylint: disable=duplicate-code
-"""
-Module for querying analytical metrics from the Grad Cafe PostgreSQL database.
+"""Module for querying analytical metrics from the Grad Cafe PostgreSQL database.
+
 Enforces safe SQL composition, inherent row limits, and least-privilege connectivity.
 """
 import os
+import json
 import psycopg
 from psycopg import sql
 from dotenv import load_dotenv
@@ -151,8 +152,7 @@ def get_metrics():
                     if isinstance(raw_payload, dict):
                         metrics = raw_payload
                     else:
-                        import json as _json
-                        metrics = _json.loads(raw_payload)
+                        metrics = json.loads(raw_payload)
                 else:
                     get_demographic_metrics(cur, metrics)
                     get_academic_metrics(cur, metrics)
