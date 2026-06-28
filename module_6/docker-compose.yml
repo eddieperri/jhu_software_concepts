@@ -4,7 +4,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     ports: 
       - "5432:5432"
     volumes:
@@ -32,7 +34,7 @@ services:
       - "8080:8080"
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - DATABASE_URL=postgresql://postgres@db:5432/postgres
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - PYTHONUNBUFFERED=1
     volumes:
       - ./src/worker/etl:/app/worker/etl:ro # <--- Gives web access to query_data.py
@@ -44,9 +46,10 @@ services:
 
   worker:
     build: ./src/worker
+    command: sh -c "python db/load_data.py && python consumer.py"
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - DATABASE_URL=postgresql://postgres@db:5432/postgres
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - HOME=/tmp
       - PYTHONUNBUFFERED=1  # <--- Forces Python to print logs instantly
     volumes:
