@@ -56,4 +56,4 @@ Verification steps
     - `docker compose ps` and `docker compose logs db rabbitmq`.
 2. Open RabbitMQ UI at `http://localhost:15672` and inspect exchanges/queues.
 3. Open the Flask UI at `http://localhost:8080` and click **Pull Data** → check worker logs for a received `scrape_new_data` task.
-4. After a scrape completes, confirm rows in Postgres via `docker compose exec db psql -U postgres -c "select count(*) from applicants;"`.
+4. After a scrape completes, confirm rows in Postgres via `docker compose exec db psql -U postgres -c "select count(*) from applicants;"`. 
