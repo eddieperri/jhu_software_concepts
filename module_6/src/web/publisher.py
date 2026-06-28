@@ -1,3 +1,6 @@
+"""
+Module for publishing tasks to the RabbitMQ message broker.
+"""
 import os
 import json
 from datetime import datetime, timezone
@@ -13,12 +16,12 @@ def _open_channel():
     params = pika.URLParameters(url)
     conn = pika.BlockingConnection(params)
     ch = conn.channel()
-    
+
     # Durable exchange & queue; bind once per process (idempotent)
     ch.exchange_declare(exchange=EXCHANGE, exchange_type="direct", durable=True)
     ch.queue_declare(queue=QUEUE, durable=True)
     ch.queue_bind(exchange=EXCHANGE, queue=QUEUE, routing_key=ROUTING_KEY)
-    
+
     return conn, ch
 
 def publish_task(kind: str, payload: dict | None = None, headers: dict | None = None) -> None:
@@ -27,7 +30,7 @@ def publish_task(kind: str, payload: dict | None = None, headers: dict | None = 
         {"kind": kind, "ts": datetime.now(timezone.utc).isoformat(), "payload": payload or {}},
         separators=(",", ":")
     ).encode("utf-8")
-    
+
     conn, ch = _open_channel()
     try:
         ch.basic_publish(

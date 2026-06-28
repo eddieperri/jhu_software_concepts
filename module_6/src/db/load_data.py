@@ -95,7 +95,7 @@ def load_data(json_path=None):
     Uses safe psycopg composition and handles relative/absolute paths.
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     if json_path is None:
         # FIX 1: Point to the new data directory
         json_path = os.path.join(base_dir, "..", "data", "applicant_data.json")
@@ -113,7 +113,7 @@ def load_data(json_path=None):
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                
+
                 # FIX 2: Execute the schema.sql file to create the tables first
                 schema_path = os.path.join(base_dir, "schema.sql")
                 if os.path.exists(schema_path):

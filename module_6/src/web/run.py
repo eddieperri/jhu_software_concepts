@@ -1,12 +1,18 @@
+"""
+Main Flask application entry point and routing definitions.
+"""
 import os
 from flask import Flask, render_template, jsonify, redirect, url_for
-from worker.etl.query_data import get_metrics  # Update this import path based on where query_data lives!
+
 from publisher import publish_task
+# pylint: disable=import-error
+from worker.etl.query_data import get_metrics
 
 def create_app(test_config=None):
-    flask_app = Flask(__name__, template_folder='app/templates') # Pointing to the new templates folder
+    """Creates and configures the Flask application."""
+    flask_app = Flask(__name__, template_folder='app/templates')
     flask_app.secret_key = os.environ.get('SECRET_KEY', 'dev-fallback-key')
-    
+
     if test_config:
         flask_app.config.update(test_config)
 
@@ -25,7 +31,7 @@ def create_app(test_config=None):
         try:
             publish_task("scrape_new_data", payload={})
             return jsonify({"ok": True, "message": "Scrape task queued!"}), 202
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             return jsonify({"error": str(e)}), 503
 
     @flask_app.route('/update-analysis', methods=['POST'])
@@ -34,12 +40,11 @@ def create_app(test_config=None):
         try:
             publish_task("recompute_analytics", payload={})
             return jsonify({"ok": True, "message": "Analytics recompute queued!"}), 202
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             return jsonify({"error": str(e)}), 503
 
     return flask_app
 
 if __name__ == '__main__':
     main_app = create_app()
-    # Binding to 0.0.0.0 is required for Docker port forwarding to work
     main_app.run(host='0.0.0.0', port=8080, debug=True)
