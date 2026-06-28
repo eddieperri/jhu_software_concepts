@@ -31,6 +31,21 @@ docker compose up --build
 2. Wait for `db` and `rabbitmq` to become healthy (Compose healthchecks are configured).
 3. Visit `http://localhost:8080` and use the UI buttons to enqueue tasks.
 
+## Docker Hub Registry Images
+Pre-built images for this project are hosted on Docker Hub.
+
+**Registry Links:**
+* Web Image: [hub.docker.com/r/eddieperri/module_6-web](https://hub.docker.com/r/eddieperri/module_6-web)
+* Worker Image: [hub.docker.com/r/eddieperri/module_6-worker](https://hub.docker.com/r/eddieperri/module_6-worker)
+
+**Pull and Run Instructions:**
+If you prefer to run the pre-built images instead of building locally, execute the following commands in a directory containing the `docker-compose.yml` file:
+
+```bash
+docker pull eddieperri/module_6-web:v1
+docker pull eddieperri/module_6-worker:v1
+docker compose up -d
+
 Useful Docker commands
 ```bash
 docker compose build --no-cache web worker
