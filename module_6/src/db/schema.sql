@@ -1,5 +1,4 @@
--- schema.sql
--- Run this script to generate the necessary table for thegradcafe database
+-- Run this script to generate the necessary tables for thegradcafe database
 
 DROP TABLE IF EXISTS applicants;
 
@@ -20,3 +19,15 @@ CREATE TABLE applicants (
     llm_generated_program VARCHAR(255),
     llm_generated_university VARCHAR(255)
 );
+
+--  Watermark table for idempotent inserts
+CREATE TABLE IF NOT EXISTS ingestion_watermarks (
+    source TEXT PRIMARY KEY,
+    last_seen TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Initialize the watermark row
+INSERT INTO ingestion_watermarks (source, last_seen) 
+VALUES ('gradcafe_scraper', '') 
+ON CONFLICT DO NOTHING;

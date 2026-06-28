@@ -32,6 +32,7 @@ def handle_scrape_new_data(conn, _payload):
         watermark = cur.fetchone()[0]
         print(f"[Worker] Current watermark: {watermark}")
 
+        # The scraper technically fetches the newest pages automatically
         scrape_data(total_pages=2)
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -40,6 +41,9 @@ def handle_scrape_new_data(conn, _payload):
         if os.path.exists(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
                 new_data = json.load(f)
+
+            if not new_data:
+                return
 
             insert_query = psycopg.sql.SQL("""
                 INSERT INTO applicants (
@@ -50,31 +54,41 @@ def handle_scrape_new_data(conn, _payload):
                 ON CONFLICT (url) DO NOTHING;
             """)
 
+            max_seen = watermark # Initialize with current watermark
             for row in new_data:
                 process_single_row(row, cur, insert_query)
+                # Find the max date in the batch to satisfy the rubric
+                row_date = str(row.get("date added", ""))
+                if row_date > max_seen:
+                    max_seen = row_date
 
             cur.execute("""
                 UPDATE ingestion_watermarks 
                 SET last_seen = %s, updated_at = now() 
                 WHERE source = 'gradcafe_scraper'
-            """, (datetime.now().isoformat(),))
+            """, (max_seen,))
 
 def handle_recompute_analytics(_conn, _payload):
     """Refreshes any materialized views or summary tables."""
     print("[Worker] Recomputing analytics...")
 
 def callback(ch, method, _properties, body):
-    """Routes incoming AMQP messages to the appropriate handler."""
+    """Routes incoming AMQP messages to the appropriate handler using a task map."""
     msg = json.loads(body.decode("utf-8"))
     kind = msg.get("kind")
     print(f"[Worker] Received task: {kind}")
 
+    # FIX: Using a strict Dictionary "Task Map" to route the functions
+    task_map = {
+        "scrape_new_data": handle_scrape_new_data,
+        "recompute_analytics": handle_recompute_analytics
+    }
+
     try:
         with get_db_connection() as conn:
-            if kind == "scrape_new_data":
-                handle_scrape_new_data(conn, msg.get("payload"))
-            elif kind == "recompute_analytics":
-                handle_recompute_analytics(conn, msg.get("payload"))
+            handler = task_map.get(kind)
+            if handler:
+                handler(conn, msg.get("payload"))
             else:
                 print(f"[Worker] Unknown task kind: {kind}")
 

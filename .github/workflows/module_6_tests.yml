@@ -1,0 +1,51 @@
+name: Module 6 CI
+
+on: 
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # This spins up a temporary Postgres database specifically for your tests!
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pylint pika psycopg psycopg-binary beautifulsoup4 selenium python-dotenv flask
+
+      - name: Run Pylint (Targeting 10.00/10)
+        run: |
+          cd module_6
+          pylint src/web/run.py src/web/publisher.py src/worker/consumer.py src/db/load_data.py
+
+      - name: Run Pytest (Targeting 100% Coverage)
+        env:
+          GITHUB_ACTIONS: "true" # Tells our conftest.py to use the GitHub Postgres password
+        run: |
+          cd module_6
+          python -m pytest tests/ --cov=src --cov-report=term-missing
